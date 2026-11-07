@@ -102,7 +102,7 @@ jobs:
           xcodebuild -version
           xcrun --sdk iphoneos --show-sdk-version
           python3 --version
-          for tool in git make clang cmake ninja unifdef ld.lld mformat mcopy dtc xcodebuild; do
+          for tool in git make clang cmake ninja unifdef ld.lld mformat mcopy dtc fdtoverlay xcodebuild; do
             printf '%-10s %s\n' "$tool" "$(command -v "$tool" || echo MISSING)"
           done
           df -h "$GITHUB_WORKSPACE"
@@ -143,6 +143,27 @@ jobs:
         working-directory: UniXNU
         run: ./unixnu build firmware -D ../device --uefi ../uefi-cupid
 
+      - name: Build the cupid device tree
+        id: dtb
+        working-directory: device
+        run: scripts/build-cupid-dtb.sh
+
+      - name: Build a menu-only boot image
+        id: bootimg
+        working-directory: UniXNU
+        run: |
+          ./unixnu bootimg -D ../device --uefi ../uefi-cupid \
+            --dtb ../device/build/cupid/cupid.dtb --ramdisk none
+
+      - name: Upload the boot image
+        if: always() && steps.bootimg.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cupid-menu-bootimg
+          path: UniXNU/out/cupid/*/*/boot/boot.img
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Collect text logs
         if: always() && steps.status.outcome == 'success'
         run: |
@@ -179,6 +200,8 @@ jobs:
             echo "| kernel + prelink | ${KERNEL:-skipped} |"
             echo "| package (UniXNU.efi) | ${{ steps.package.outcome }} |"
             echo "| firmware (SILICIUM_UEFI.fd) | ${{ steps.firmware.outcome }} |"
+            echo "| cupid.dtb | ${{ steps.dtb.outcome }} |"
+            echo "| menu-only boot.img | ${{ steps.bootimg.outcome }} |"
             echo
             echo "iPhone17,2 (D94AP) profile, SM8450 SoC source, cupid defconfig. Text logs only."
           } >> "$GITHUB_STEP_SUMMARY"
