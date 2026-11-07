@@ -1,14 +1,15 @@
 diff --git a/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c b/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c
-index cd2a9e0..2da08f7 100644
+index cd2a9e0..fc2ddff 100644
 --- a/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c
 +++ b/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c
-@@ -128,6 +128,34 @@ STATIC EFI_BLOCK_IO_PROTOCOL  mBlockIo = {
+@@ -128,6 +128,39 @@ STATIC EFI_BLOCK_IO_PROTOCOL  mBlockIo = {
    RamBlockFlush
  };
  
 +// The v4 boot path on some boards puts the stock vendor ramdisk in front of
-+// the boot ramdisk, so the FAT superblock is not at offset 0. Scan for it.
-+#define FAT_SCAN_LIMIT (64ULL * 1024 * 1024)
++// the boot ramdisk, so the FAT superblock is not at offset 0. Scan for it and
++// log a word every 16 MiB so a photo shows what the initrd actually contains.
++#define FAT_SCAN_LIMIT (256ULL * 1024 * 1024)
 +
 +STATIC
 +UINT64
@@ -24,6 +25,10 @@ index cd2a9e0..2da08f7 100644
 +       Offset += RAM_BLOCK_SIZE)
 +  {
 +    CONST UINT8  *Sector = Base + Offset;
++    if ((Offset % (16ULL * 1024 * 1024)) == 0) {
++      DEBUG ((DEBUG_ERROR, "UNIXNURAMDISK: +0x%lx: %08x %08x\n",
++              Offset, ((CONST UINT32 *)Sector)[0], ((CONST UINT32 *)Sector)[1]));
++    }
 +    if ((Sector[510] == 0x55) && (Sector[511] == 0xAA) &&
 +        ((CompareMem ((VOID *)(Sector + 54), "FAT", 3) == 0) ||
 +         (CompareMem ((VOID *)(Sector + 82), "FAT", 3) == 0)))
@@ -37,7 +42,7 @@ index cd2a9e0..2da08f7 100644
  STATIC
  VOID
  PublishInitrd (
-@@ -166,6 +194,19 @@ PublishInitrd (
+@@ -166,6 +199,19 @@ PublishInitrd (
      return;
    }
  
