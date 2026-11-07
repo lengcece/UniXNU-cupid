@@ -119,6 +119,11 @@ jobs:
         working-directory: UniXNU
         run: ./unixnu build kernel -D ../device
 
+      - name: Build the package
+        id: package
+        working-directory: UniXNU
+        run: ./unixnu build package -D ../device
+
       - name: Collect text logs
         if: always() && steps.status.outcome == 'success'
         run: |
@@ -153,6 +158,7 @@ jobs:
             echo "| --- | --- |"
             echo "| resolve (defconfig, fetch, status) | ${{ steps.status.outcome }} |"
             echo "| kernel + prelink | ${KERNEL:-skipped} |"
+            echo "| package (UniXNU.efi) | ${{ steps.package.outcome }} |"
             echo
             echo "iPhone17,2 (D94AP) profile, SM8450 SoC source, cupid defconfig. Text logs only."
           } >> "$GITHUB_STEP_SUMMARY"

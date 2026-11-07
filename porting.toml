@@ -180,7 +180,7 @@ evidence = []
 
 [[area]]
 id = "packaging"
-status = "planned"
+status = "host-verified"
 components = ["XnuPrelink"]
 paths = ["package/**", "scripts/package.sh", "patches/**"]
 inputs = ["iPhone17,2 kernelcache for prelink, the OS/SystemOS images for userdata, Data seed and the platform seed (UNIXNU_UNIQUE_CHIP_ID)."]
@@ -190,7 +190,14 @@ findings = ["Kernel and package steps do not need the firmware checkout; payload
 completion = ["Kernel and prelink succeed, the payload contains all declared inputs, and the boot image matches the bootloader format and size limit."]
 limits = ["uefi-cupid, the platform seed and the Data seed do not exist yet."]
 next_action = ["Run the macOS kernel workflow and record the prelink result."]
-evidence = []
+
+[[area.evidence]]
+kind = "host"
+reference = "https://github.com/obaosp/UniXNU-cupid/actions/runs/42369952333"
+command = "./unixnu build kernel -D ../device"
+revision = "4cd54a6dbaabfcd53214a522a51f5a04c90d19ec"
+result = "macOS 26 arm64e build of iOS 27.0.1 profile ios-27.0.1-24A446: 70-patch series applied, XNU 12377.121.6 compiled with the iPhone17,2 fileset reference, and prelink emitted kernel.macho sha256 f43096cba022bf9f7427c2876cd94a88b3680662e0d04d12fccb628ab5e0b3fa with AMFI early init 0xfffffff00921000c."
+
 
 [[area]]
 id = "diagnostics"
