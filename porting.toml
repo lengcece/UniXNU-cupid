@@ -61,6 +61,13 @@ result = "cupidPkg platform definition: WaipioPkg include, 1080x2400 frame buffe
 
 [[area.evidence]]
 kind = "host"
+reference = "https://github.com/obaosp/UniXNU-cupid/actions/runs/42391718599"
+command = "./unixnu build firmware -D ../device --uefi ../uefi-cupid && ./unixnu build payload ... && ./unixnu bootimg ..."
+revision = "b83e634bd63489b7c7ff3f976ca732ea80c98c03"
+result = "Corrected FD window: firmware built with FD_BASE=0xa7000000, FD_SIZE=0x2a2000, FD_BLOCKS=674; BootShim decompresses to 0x2a2000 with text_offset 0xa7000000, image_size 0x2a20c0 and the ARM64 magic; boot.img sha256 4b9643054648573c93fba74a8ae97e06bd39be3b789744cd4b92b7c14125f1d7 (186036224 bytes) and payload.img sha256 8792987fde257e3707530328756a17daf00b6f46687b68ebed31126e40971536 (184549376 bytes)."
+
+[[area.evidence]]
+kind = "host"
 reference = "https://github.com/obaosp/UniXNU-cupid/actions/runs/42383457434"
 command = "./unixnu build payload -D ../device --uefi ../uefi-cupid --unique-chip-id <seed> && ./unixnu bootimg -D ../device --uefi ../uefi-cupid --dtb ../device/build/cupid/cupid.dtb"
 revision = "50a8c5d2998cec423adc356e824e8f2faba0a50c"
