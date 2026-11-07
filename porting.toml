@@ -44,7 +44,7 @@ configuration = ["board.toml [firmware] names config cupid, dsc Platforms/Xiaomi
 procedure = ["Fork uefi-sheng into uefi-cupid, add cupidPkg and its Binaries/cupid module from the stock UEFI image.", "Build with ./unixnu build firmware -D ../UniXNU-cupid --uefi ../uefi-cupid.", "Record the firmware revision, FD size and the handoff memory map."]
 findings = ["uefi-cupid is forked from UniXNU/uefi-sheng and carries Platforms/Xiaomi/cupidPkg: CUPID_VENDOR_HW = 0, USE_CUSTOM_DISPLAY_DRIVER = 0, WaipioPkg.dsc.inc (SM8450, 8 cores, GIC 0x17100000), SimpleFbDxe on ABL's 1080x2400 scan-out, and UniXNUPkg + DarwinBoot + UniXNURamDiskDxe.", "The memory and configuration maps are copied from the SM8450 ingres platform (same DRAM base, FD window and SoC carveouts) and are REQUIRED to be replaced with cupid's stock uefiplat.cfg.", "The minimal configuration deliberately omits Binaries/cupid, so no stock vendor module is needed to build the firmware volume; vendor clocks, UFS, USB, charger and the stock display chain are a later CUPID_VENDOR_HW = 1 step.", "The stock splash_region (0xb8000000 + 0x2b00000) is present in waipio display DTSI and is assumed in the payload and boot image."]
 completion = ["Firmware image builds, enters UniXNU, publishes the framebuffer and preserves documented reservations."]
-limits = ["cupidPkg has not been compiled yet; the memory map and FD base are ingres values, and vendor hardware is off."]
+limits = ["cupidPkg builds and produces SILICIUM_UEFI.fd, but the memory map and FD base are still the ingres SM8450 values and vendor hardware is off; neither is device-verified."]
 next_action = ["Build firmware with ./unixnu build firmware --uefi ../uefi-cupid and record the FD size; then import Binaries/cupid from the HyperOS archive for CUPID_VENDOR_HW = 1."]
 
 [[area.evidence]]
@@ -209,8 +209,8 @@ configuration = ["board.toml [payload] builds a 176 MiB CUPIDESP FAT volume; [bo
 procedure = ["Install the OS profile, then run scripts/package.sh --os 27 --uefi ../uefi-cupid once the firmware exists.", "Run the macOS workflow for kernel-only builds until then."]
 findings = ["Kernel and package steps do not need the firmware checkout; payload and boot image do because they embed the firmware volume."]
 completion = ["Kernel and prelink succeed, the payload contains all declared inputs, and the boot image matches the bootloader format and size limit."]
-limits = ["uefi-cupid, the platform seed and the Data seed do not exist yet."]
-next_action = ["Run the macOS kernel workflow and record the prelink result."]
+limits = ["Kernel, package and firmware are host-verified. Payload is blocked on the platform seed (UNIXNU_UNIQUE_CHIP_ID); the boot image is blocked on a cupid firmware DTB. Neither is in the repository."]
+next_action = ["Build payload and boot image once the owner supplies UNIXNU_UNIQUE_CHIP_ID (8 hex digits) and cupid's firmware DTB; ./unixnu bootimg requires both the FD and a DTB, and payload refuses to build without the seed."]
 
 [[area.evidence]]
 kind = "host"
