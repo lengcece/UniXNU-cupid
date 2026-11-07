@@ -83,6 +83,15 @@ jobs:
           git update-index --cacheinfo 160000,93a5030c5d983d0ef90f0fca93879d6e36ad1ba8,drivers/ArmCpu
           git ls-tree HEAD drivers/ArmCpu
 
+      - name: Apply device-side UniXNU fixes
+        working-directory: UniXNU
+        run: |
+          shopt -s nullglob
+          for patch in ../device/patches/unixnu/*.patch; do
+            echo "applying $(basename "$patch")"
+            git apply "$patch"
+          done
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
