@@ -67,8 +67,9 @@ preprocess() {
     "$src" -o "$out"
 }
 
-echo "== preprocess + compile waipio.dts"
-preprocess "$DTS/qcom/waipio.dts" "$WORK/waipio.dts"
+echo "== preprocess + compile waipio-v2.dts"
+# cupid reports ro.boot.dtb_idx=10 and soc revision 2.2: Waipio v2.
+preprocess "$DTS/qcom/waipio-v2.dts" "$WORK/waipio.dts"
 dtc -@ -I dts -O dtb -o "$WORK/waipio.dtb" "$WORK/waipio.dts" 2>/dev/null
 
 echo "== preprocess + compile cupid overlay"

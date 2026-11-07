@@ -14,7 +14,7 @@ paths = ["board.toml", "feeds.toml", "configs/**", "profiles/**", ".github/**", 
 inputs = ["SM8450 SoC source pin; iPhone-flavoured iOS 27.0.1 build 24A446 profile; cupid defconfig and device tree.", "UniXNU main does not ship an ios-27 profile: this repository carries profiles/os/ios-27.0.1-24A446 and installs it into the checkout."]
 configuration = ["board.os_profile = ios-27.0.1-24A446; board.soc = SM8450; board.soc_source = sm8450; schema_version = 2.", "profiles/os/ios-27.0.1-24A446 is an iPhone17,2 (D94AP) profile: IPSW pins, AMFI early-init address 0xfffffff00921000c, prelink roots, root/SystemOS image digests and volume UUIDs, and abi/original-classes.json.", "NOT the shipped ipados-27.0.1-24A446 profile: same build and XNU source, different IPSW, original kexts and ADT identity."]
 procedure = ["Read https://unixnu.com/porting/device-repository and https://unixnu.com/porting/records.", "Run scripts/install-os-profile.sh ../UniXNU to install profiles/os/ios-27.0.1-24A446 into the UniXNU checkout.", "Run ./unixnu defconfig cupid_ios27_defconfig -D ../UniXNU-cupid, ./unixnu fetch -D ../UniXNU-cupid, ./unixnu status --json -D ../UniXNU-cupid."]
-findings = ["iOS 27.0.1 and iPadOS 27.0.1 share build 24A446 and the same public XNU source (xnu-12377.121.6), so the OS patch series is shared. Only the IPSW, the original kexts and the ADT identity differ, which is why the profile is a separate directory rather than a board override.", "An iPhone profile is required for a phone: iPadOS presents iPad product identity, idiom and display assumptions that SpringBoard and UIKit read from /product.", "The profile was reconstructed from the published UniXNU-ishtar patches 0001, 0002 and 0005; the AMFI address is the masked-code-verified iPhone17,2 value, not the iPad17,3 one.", "Arrays replace inherited arrays: board.toml repeats every selected component, configuration fragment and patch series entry.", "The macOS workflow builds the EDK II package (UniXNU.efi) after the kernel, so a push that changes board.toml, profiles, configs or the workflow itself exercises image assembly without the phone.", "scripts/build-cupid-dtb.sh builds the firmware DTB from the LineageOS waipio + cupid overlay (cpp + dtc + fdtoverlay); its output matched the stock vendor_boot/dtbo merge byte-for-byte (sha256 dbf94038b2c889af20b649be9b02d16e32874683183bb42fe555cedea88b4970).", "The macOS workflow now also builds cupid.dtb and a menu-only boot.img with --ramdisk none; payload still needs the platform seed., "]
+findings = ["iOS 27.0.1 and iPadOS 27.0.1 share build 24A446 and the same public XNU source (xnu-12377.121.6), so the OS patch series is shared. Only the IPSW, the original kexts and the ADT identity differ, which is why the profile is a separate directory rather than a board override.", "An iPhone profile is required for a phone: iPadOS presents iPad product identity, idiom and display assumptions that SpringBoard and UIKit read from /product.", "The profile was reconstructed from the published UniXNU-ishtar patches 0001, 0002 and 0005; the AMFI address is the masked-code-verified iPhone17,2 value, not the iPad17,3 one.", "Arrays replace inherited arrays: board.toml repeats every selected component, configuration fragment and patch series entry.", "The macOS workflow builds the EDK II package (UniXNU.efi) after the kernel, so a push that changes board.toml, profiles, configs or the workflow itself exercises image assembly without the phone.", "scripts/build-cupid-dtb.sh builds the firmware DTB from the LineageOS waipio-v2 + cupid overlay (cpp + dtc + fdtoverlay), sha256 6246e11cc2867946183b7e453797d5ec0fb3c49c6297115f2605a7bf8c0e0b50. It is not byte-identical to the stock vendor_boot base+dtbo merge (956745 bytes, sha256 ea574733...): the stock base is a larger vendor tree. The device reports dtb_idx 10 (Waipio v2) and revision 2.2.", "The macOS workflow now also builds cupid.dtb and a menu-only boot.img with --ramdisk none; payload still needs the platform seed., "]
 completion = ["status resolves ios-27.0.1-24A446 with arch arm64e, the sm8450 SoC source and the cupid defconfig; all source pins resolve."]
 limits = ["The iPhone17,2 identity advertises a 1320x2868 display; cupid is 1080x2400. Display identity is corrected with the panel milestone."]
 next_action = ["Run the macOS kernel workflow and attach its defconfig/status/kernel result."]
@@ -33,6 +33,13 @@ result = "iPhone17,2 IPSW pins, arm64e architecture selection, prelink roots, AM
 kind = "source"
 reference = ".github/workflows/macos.yml"
 result = "Resolve, arm64e kernel build, iPhone17,2 prelink and EDK II package steps used by the host-verified runs."
+
+[[area.evidence]]
+kind = "device"
+reference = "notes/device-2026-11-07.md"
+command = "adb shell su -c 'getprop | grep ro.boot'"
+revision = "4730e3b1fb52e1238a5d370bdc1f381622033de9"
+result = "ro.board.platform=taro, ro.boot.hardware.sku=cupid, dtb_idx=10 (Waipio v2), dtbo_idx=19, cpuid=0x0000043252a25a21, serialno=1cb22738; /sys/devices/soc0 revision 2.2."
 
 [[area]]
 id = "firmware"
@@ -64,6 +71,13 @@ kind = "source"
 reference = "https://github.com/obaosp/uefi-cupid/blob/bce96f77d07ec90a516432df466b8cd3af7272fc/Platforms/Xiaomi/cupidPkg/README.md"
 result = "Documents the ingres-derived memory map, the missing stock uefiplat.cfg replacement, and the vendor-hardware import that Binaries/cupid needs."
 
+[[area.evidence]]
+kind = "device"
+reference = "notes/device-2026-11-07.md"
+command = "adb shell su -c 'cat /proc/iomem'"
+revision = "4730e3b1fb52e1238a5d370bdc1f381622033de9"
+result = "The live memory map and /sys/hypervisor (gunyah, api 1, variant 81) were read on the phone; the firmware has not been booted yet."
+
 [[area]]
 id = "cpu"
 status = "implemented"
@@ -87,9 +101,16 @@ kind = "source"
 reference = "https://github.com/torvalds/linux/blob/f1586048fb1dabb91c82fbe11557e505587973d3/arch/arm64/boot/dts/qcom/sm8450.dtsi"
 result = "Mainline CPU nodes, GIC windows, UFS host and PHY addresses used by dts/sm8450.dtsi."
 
+[[area.evidence]]
+kind = "device"
+reference = "notes/device-2026-11-07.md"
+command = "adb shell su -c 'grep -E \"Features|CPU part\" /proc/cpuinfo'"
+revision = "4730e3b1fb52e1238a5d370bdc1f381622033de9"
+result = "8 cores online; Features include paca and pacg on every core (FEAT_PAuth address and generic keys); parts 0xd46/0xd47/0xd48."
+
 [[area]]
 id = "memory"
-status = "planned"
+status = "implemented"
 components = []
 paths = ["dts/**", "package/*Memory*", "package/*Smmu*"]
 inputs = ["cupid UEFI memory map (largest contiguous run), reserved regions, SMMU stream IDs and DMA widths."]
@@ -99,7 +120,13 @@ findings = ["The stock bootloader memory layout has not been measured on cupid; 
 completion = ["Every handoff region is accounted for and DMA engines access only allocated ranges with the documented cache policy."]
 limits = ["No memory-map measurement from the phone."]
 next_action = ["Capture the cupid memory map before the first payload boot."]
-evidence = []
+[[area.evidence]]
+kind = "device"
+reference = "notes/device-2026-11-07.md"
+command = "adb shell su -c 'cat /proc/iomem'"
+revision = "4730e3b1fb52e1238a5d370bdc1f381622033de9"
+result = "System RAM runs measured; largest contiguous 0x840000000-0x97fffffff (5 GiB) with the reserved tail from 0x96ef68000; owned_memory_size set to 0x12e000000."
+
 
 [[area]]
 id = "storage"
@@ -118,6 +145,13 @@ next_action = ["Add UCD/PRDT allocation, response-UPIU parsing and a SCSI READ(1
 kind = "source"
 reference = "package/Sm8450Ufs/Sm8450UfsRegs.h"
 result = "SM8450 UFS GCC branch table (0x87018..0x870d4), GDSC 0x87004, host 0x1d84000 and PHY 0x1d87000, with a read-only probe; no SM8550 0x77xxx/0x9e000 values."
+
+[[area.evidence]]
+kind = "device"
+reference = "notes/device-2026-11-07.md"
+command = "adb shell su -c 'sh /data/local/tmp/collect2.sh'"
+revision = "4730e3b1fb52e1238a5d370bdc1f381622033de9"
+result = "iomem confirms ufshc 0x1d84000 (ufs_mem, ufs_ice 0x1d88000, ufs_ice_hwkm 0x1d90000) and PHY 0x1d87000; userdata is sda38, start512 25362432, size512 466862040 (LBA 3170304..61528058 at 4096 bytes)."
 
 [[area]]
 id = "display"
@@ -230,6 +264,13 @@ command = "./unixnu build kernel -D ../device"
 revision = "4cd54a6dbaabfcd53214a522a51f5a04c90d19ec"
 result = "macOS 26 arm64e build of iOS 27.0.1 profile ios-27.0.1-24A446: 70-patch series applied, XNU 12377.121.6 compiled with the iPhone17,2 fileset reference, and prelink emitted kernel.macho sha256 f43096cba022bf9f7427c2876cd94a88b3680662e0d04d12fccb628ab5e0b3fa with AMFI early init 0xfffffff00921000c."
 
+
+[[area.evidence]]
+kind = "device"
+reference = "notes/device-2026-11-07.md"
+command = "adb shell su -c 'sh /data/local/tmp/collect2.sh'"
+revision = "4730e3b1fb52e1238a5d370bdc1f381622033de9"
+result = "userdata geometry measured from the live GPT (sda38, 3170304..61528058 at 4096-byte LBA); payload and boot image were not built at this revision yet."
 
 [[area]]
 id = "diagnostics"

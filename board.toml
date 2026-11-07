@@ -11,6 +11,16 @@ soc_source = "sm8450"
 # scripts/install-os-profile.sh; UniXNU main does not carry it yet.
 os_profile = "ios-27.0.1-24A446"
 
+[userdata]
+# Measured on the phone (PixelOS, root, 2026-11-07):
+# /dev/block/by-name/userdata -> /dev/block/sda38
+# start 25362432 (512-byte sectors), size 466862040 -> 4096-byte LBA
+# first 3170304, count 58357755, last 61528058.
+first_lba = 3170304
+last_lba = 61528058
+lba_bytes = 4096
+
+
 [components]
 # Stage 0. ArmDTPlatform, ArmCpu and XnuPrelink also come from the arm64e arch
 # profile; they are repeated here because arrays replace inherited arrays.
@@ -76,12 +86,18 @@ kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "-no_slto_
 [payload.adt]
 # SM8450 msm-id 457 (0x1C9), from the vendor DTS qcom,msm-id.
 chip_id = "457"
-# REQUIRED measurement: largest contiguous run in cupid's UEFI memory map.
-# 4 GiB is the conservative stage-0 window (8 GiB SKU).
-owned_memory_size = "0x100000000"
+# Measured /proc/iomem: the largest contiguous System RAM run is
+# 0x840000000-0x97fffffff (5 GiB) with a reserved tail from 0x96ef68000.
+# 0x12e000000 (4.6875 GiB) stays below that tail.
+owned_memory_size = "0x12e000000"
 packed_data_ramdisk = true
 persistent_data = true
 unique_chip_id = "required"
+
+[adt.defaults.u32]
+# /sys/hypervisor/type = gunyah (api 1, variant 81); there is no Apple PMGR.
+vmm-present = 1
+sleep-disabled = 1
 
 [adt.product.string]
 # The framebuffer path is 8-bit until the panel driver lands; the panel is P3.
