@@ -36,7 +36,7 @@ result = "Resolve, arm64e kernel build, iPhone17,2 prelink and EDK II package st
 
 [[area]]
 id = "firmware"
-status = "implemented"
+status = "host-verified"
 components = ["DarwinBoot"]
 paths = ["proprietary-files.txt", "scripts/*firmware*"]
 inputs = ["A Mu-Silicium UEFI fork for cupid (uefi-cupid), cupid's stock UEFI/ABL firmware and the live ABL device tree.", "PSCI SMC entry, GOP framebuffer handoff and the memory map UniXNU may own."]
@@ -51,6 +51,13 @@ next_action = ["Build firmware with ./unixnu build firmware --uefi ../uefi-cupid
 kind = "source"
 reference = "https://github.com/obaosp/uefi-cupid/blob/bce96f77d07ec90a516432df466b8cd3af7272fc/Platforms/Xiaomi/cupidPkg/cupid.dsc"
 result = "cupidPkg platform definition: WaipioPkg include, 1080x2400 frame buffer, UniXNU/DarwinBoot/UniXNURamDiskDxe components, CUPID_VENDOR_HW = 0."
+
+[[area.evidence]]
+kind = "host"
+reference = "https://github.com/obaosp/UniXNU-cupid/actions/runs/42371720139"
+command = "./unixnu build firmware -D ../device --uefi ../uefi-cupid"
+revision = "14ab2c0527b2b808ac94afd66025fa56238b9168"
+result = "macOS 26 DEBUG/CLANGPDB build of Platforms/Xiaomi/cupidPkg/cupid.dsc with FD_BASE=0xa7100000 FD_SIZE=0x300000 FD_BLOCKS=768; output uefi-cupid/Build/cupidPkg/DEBUG_CLANGPDB/FV/SILICIUM_UEFI.fd. The Gic-Spurious edk2 patch applied."
 
 [[area.evidence]]
 kind = "source"
@@ -204,6 +211,13 @@ findings = ["Kernel and package steps do not need the firmware checkout; payload
 completion = ["Kernel and prelink succeed, the payload contains all declared inputs, and the boot image matches the bootloader format and size limit."]
 limits = ["uefi-cupid, the platform seed and the Data seed do not exist yet."]
 next_action = ["Run the macOS kernel workflow and record the prelink result."]
+
+[[area.evidence]]
+kind = "host"
+reference = "https://github.com/obaosp/UniXNU-cupid/actions/runs/42371720139"
+command = "./unixnu build kernel -D ../device && ./unixnu build package -D ../device"
+revision = "14ab2c0527b2b808ac94afd66025fa56238b9168"
+result = "Same run rebuilt arm64e XNU (kernel.macho sha256 ac358a47682ac61c6da8ba10eb398224f975f020738eb8c8ffe8ec63772b2614) and built the EDK II package: package/build.sh -b DEBUG -t CLANGPDB, outputs in out/cupid/ios-27.0.1-24A446/cupid_ios27/package/Build/Out (UniXNU.efi and the shared drivers)."
 
 [[area.evidence]]
 kind = "host"
