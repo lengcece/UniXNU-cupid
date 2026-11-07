@@ -28,7 +28,9 @@ need fdtoverlay
 need fdtput
 
 if [ -z "${CPP:-}" ]; then
-  if command -v cpp >/dev/null; then CPP=cpp; else CPP="clang -E"; fi
+  # macOS `cpp` is a driver shim that mis-parses -x assembler-with-cpp;
+  # clang -E is the supported preprocessor on both macOS and Linux builders.
+  if command -v clang >/dev/null; then CPP="clang -E"; else CPP=cpp; fi
 fi
 
 if [ ! -d "$DTS/qcom" ]; then

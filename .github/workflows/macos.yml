@@ -128,6 +128,11 @@ jobs:
           print("status resolves the iOS 27 arm64e profile, the sm8450 source and the cupid defconfig")
           PY
 
+      - name: Build the cupid device tree
+        id: dtb
+        working-directory: device
+        run: scripts/build-cupid-dtb.sh
+
       - name: Build the kernel
         id: kernel
         working-directory: UniXNU
@@ -142,11 +147,6 @@ jobs:
         id: firmware
         working-directory: UniXNU
         run: ./unixnu build firmware -D ../device --uefi ../uefi-cupid
-
-      - name: Build the cupid device tree
-        id: dtb
-        working-directory: device
-        run: scripts/build-cupid-dtb.sh
 
       - name: Build the payload
         id: payload
