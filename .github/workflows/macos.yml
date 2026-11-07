@@ -9,9 +9,15 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
+    paths:
+      - "board.toml"
+      - "feeds.toml"
+      - "configs/**"
+      - "dts/**"
+      - "profiles/**"
+      - "patches/**"
+      - "scripts/**"
+      - ".github/workflows/macos.yml"
 
 permissions:
   contents: read

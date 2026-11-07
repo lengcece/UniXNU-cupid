@@ -29,7 +29,7 @@ archives = [
 config_fragments = ["arch:configs/common.config", "soc:configs/sm8450.config", "os:configs/ios.config"]
 patch_series = [
   "arch:patches/xnu/series",
-  "soc:patches/xnu/series",
+  "soc:patches/xnu-12377/series",
   "os:patches/xnu/series",
   "device:patches/xnu/series",
 ]

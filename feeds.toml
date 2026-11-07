@@ -3,4 +3,4 @@ name = "sm8450"
 kind = "soc"
 git = "https://github.com/obaosp/UniXNU-sm8450-common.git"
 # Filled with the reviewed commit of this port's SoC repository.
-commit = "52be0272a51cc51b9acf10fc5355179b3de332ac"
+commit = "8444b64bc380aa5d3665a07a09470c2240d12c54"
