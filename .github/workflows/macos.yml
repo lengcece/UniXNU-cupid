@@ -148,19 +148,28 @@ jobs:
         working-directory: device
         run: scripts/build-cupid-dtb.sh
 
-      - name: Build a menu-only boot image
+      - name: Build the payload
+        id: payload
+        working-directory: UniXNU
+        env:
+          UNIXNU_UNIQUE_CHIP_ID: ${{ secrets.UNIXNU_UNIQUE_CHIP_ID }}
+        run: ./unixnu build payload -D ../device --unique-chip-id "$UNIXNU_UNIQUE_CHIP_ID"
+
+      - name: Build the boot image
         id: bootimg
         working-directory: UniXNU
         run: |
           ./unixnu bootimg -D ../device --uefi ../uefi-cupid \
-            --dtb ../device/build/cupid/cupid.dtb --ramdisk none
+            --dtb ../device/build/cupid/cupid.dtb
 
       - name: Upload the boot image
         if: always() && steps.bootimg.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: cupid-menu-bootimg
-          path: UniXNU/out/cupid/*/*/boot/boot.img
+          name: cupid-bootimg
+          path: |
+            UniXNU/out/cupid/*/*/boot/boot.img
+            UniXNU/out/cupid/*/*/payload/payload.img
           if-no-files-found: error
           retention-days: 7
 
@@ -201,7 +210,8 @@ jobs:
             echo "| package (UniXNU.efi) | ${{ steps.package.outcome }} |"
             echo "| firmware (SILICIUM_UEFI.fd) | ${{ steps.firmware.outcome }} |"
             echo "| cupid.dtb | ${{ steps.dtb.outcome }} |"
-            echo "| menu-only boot.img | ${{ steps.bootimg.outcome }} |"
+            echo "| payload.img | ${{ steps.payload.outcome }} |"
+            echo "| boot.img | ${{ steps.bootimg.outcome }} |"
             echo
             echo "iPhone17,2 (D94AP) profile, SM8450 SoC source, cupid defconfig. Text logs only."
           } >> "$GITHUB_STEP_SUMMARY"

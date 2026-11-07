@@ -71,7 +71,7 @@ loader = "firmware"
 title = "iOS 27"
 dram_size = "0x80000000"
 panic_screen = true
-kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "-no_slto_panic", "use_contiguous_hint=0", "native-ufs-root=1"]
+kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "-no_slto_panic", "use_contiguous_hint=0"]
 
 [payload.adt]
 # SM8450 msm-id 457 (0x1C9), from the vendor DTS qcom,msm-id.
