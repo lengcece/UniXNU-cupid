@@ -61,6 +61,13 @@ result = "cupidPkg platform definition: WaipioPkg include, 1080x2400 frame buffe
 
 [[area.evidence]]
 kind = "host"
+reference = "https://github.com/obaosp/UniXNU-cupid/actions/runs/42383457434"
+command = "./unixnu build payload -D ../device --uefi ../uefi-cupid --unique-chip-id <seed> && ./unixnu bootimg -D ../device --uefi ../uefi-cupid --dtb ../device/build/cupid/cupid.dtb"
+revision = "50a8c5d2998cec423adc356e824e8f2faba0a50c"
+result = "payload.img 184549376 bytes sha256 f9daa8c8e136321ffe65f1f968284c58318f81751804f1ce7c9778a5f1e271ab; boot.img 186036224 bytes sha256 65cfa2fbe4c396f19ce19f58953c144e56240cd9e1c8fb01d9f5b50423c8f9a8. ANDROID! header v0, pagesize 4096, kernel_addr 0x8000, tags 0x1e00000, ramdisk equals payload, kernel region is gzip(1028417) plus cupid DTB(451126, ends exactly at kernel_size). Payload FAT contains EFI/UniXNU/unixnu.toml with an iOS 27 entry and Payloads/kernel.macho 93667328 bytes plus kernel.macho.adt."
+
+[[area.evidence]]
+kind = "host"
 reference = "https://github.com/obaosp/UniXNU-cupid/actions/runs/42371720139"
 command = "./unixnu build firmware -D ../device --uefi ../uefi-cupid"
 revision = "14ab2c0527b2b808ac94afd66025fa56238b9168"
