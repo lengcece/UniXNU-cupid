@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Xiaomi 12 (cupid), Qualcomm SM8450 (waipio).
+//
+// Memory handoff and splash geometry follow the vendor device trees
+// (LineageOS android_kernel_xiaomi_sm8450-devicetrees):
+//   - qcom/waipio.dtsi:            qcom,msm-id = <457 0x10000>
+//   - qcom/display/display/waipio-sde-display.dtsi:
+//                                  cont_splash_region 0xb8000000 + 0x2b00000
+//   - qcom/cupid-sm8450.dtsi:      panel 1080x2400, FTS SPI touch
+/dts-v1/;
+/include/ "sm8450.dtsi"
+
+/ {
+    model = "Xiaomi 12";
+    compatible = "xiaomi,cupid", "qcom,sm8450";
+
+    // Nominal handoff range, as sheng. DarwinBoot owns the contiguous window
+    // selected by [payload.adt] owned_memory_size from the UEFI memory map.
+    // REQUIRED: replace 2 GiB with the measured cupid window once dumped.
+    memory@80000000 {
+        device_type = "memory";
+        reg = <0 0x80000000 0 0x80000000>;
+    };
+
+    reserved-memory {
+        #address-cells = <2>;
+        #size-cells = <2>;
+        ranges;
+        // Stock continuous-splash framebuffer for 1080x2400.
+        splash_region: framebuffer@b8000000 {
+            label = "cont_splash_region";
+            reg = <0 0xb8000000 0 0x2b00000>;
+            no-map;
+        };
+    };
+};
+
+// cpu0-3 Cortex-A510 (E); cpu4-6 Cortex-A710 and cpu7 Cortex-X2 (P).
+// MPIDR Affinity1 0x000-0x700, matching mainline sm8450.dtsi.
+&cpu0 { unixnu,cluster-type = "E"; };
+&cpu1 { unixnu,cluster-type = "E"; };
+&cpu2 { unixnu,cluster-type = "E"; };
+&cpu3 { unixnu,cluster-type = "E"; };
+&cpu4 { unixnu,cluster-type = "P"; };
+&cpu5 { unixnu,cluster-type = "P"; };
+&cpu6 { unixnu,cluster-type = "P"; };
+&cpu7 { unixnu,cluster-type = "P"; };
+
+// No storage, GPU or input component is selected for stage 0, so the nodes
+// stay disabled. Enabling them without a matching driver only publishes
+// resources no kext will claim.

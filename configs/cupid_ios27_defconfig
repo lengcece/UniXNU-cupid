@@ -1,0 +1,14 @@
+# Stage 0 (iOS 27 bring-up): arm64e kernel, owner storage chain later.
+# Display and GPU stay off until their iPhone17,2 / Adreno 730 ABI inputs exist:
+# CONFIG_XNU_NATIVE_LEGACY_DISPLAY needs a 24A446 d94ap display record and
+# CONFIG_XNU_NATIVE_ADRENO is the Adreno 740 driver, not the 730 this SoC has.
+CONFIG_XNU_BUILD_ARCHIVES=y
+CONFIG_XNU_CRYPTO_BOOTSTRAP="source"
+CONFIG_XNU_DT_PANIC_REGION=y
+CONFIG_XNU_ARMVIRT_PLATFORM=n
+CONFIG_XNU_KERNEL_CHAINED_FIXUPS=y
+# No UFS component is selected yet: ShengUfs matches "qcom,sm8550-ufshc" and
+# uses SM8550 GCC offsets, so it must not be pointed at SM8450.
+# CONFIG_XNU_NATIVE_UFS is not set
+# CONFIG_XNU_NATIVE_ADRENO is not set
+# CONFIG_XNU_NATIVE_LEGACY_DISPLAY is not set

@@ -1,0 +1,142 @@
+name: macOS kernel build
+
+# Builds the arm64e iOS 27 XNU for cupid on a GitHub macOS runner. This is the
+# reproducible host check while the phone is not attached: it resolves the
+# iOS 27 profile, fetches the pinned sources, decodes the iPhone17,2 kernelcache
+# and prelinks the kernel. It publishes text logs only (no Apple images).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kernel-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+  HOMEBREW_NO_ENV_HINTS: 1
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  kernel:
+    runs-on: macos-26
+    timeout-minutes: 360
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      UNIXNU_DEVICE: ${{ github.workspace }}/device
+      # prepare-xnu-source.py lists Apple sources through the GitHub API.
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out the device repository
+        uses: actions/checkout@v4
+        with:
+          path: device
+          persist-credentials: false
+
+      - name: Check out UniXNU
+        uses: actions/checkout@v4
+        with:
+          repository: UniXNU/UniXNU
+          ref: main
+          path: UniXNU
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install host tools
+        run: |
+          brew install llvm lld mtools dtc
+          if ! command -v unifdef >/dev/null; then
+            brew install unifdef
+            echo "$(brew --prefix unifdef)/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Report the toolchain
+        run: |
+          sw_vers
+          uname -m
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          python3 --version
+          for tool in git make clang cmake ninja unifdef ld.lld mformat mcopy dtc xcodebuild; do
+            printf '%-10s %s\n' "$tool" "$(command -v "$tool" || echo MISSING)"
+          done
+          df -h "$GITHUB_WORKSPACE"
+
+      - name: Install the iOS 27 profile
+        working-directory: device
+        run: scripts/install-os-profile.sh ../UniXNU
+
+      - name: Resolve the configuration
+        id: status
+        working-directory: UniXNU
+        run: |
+          ./unixnu defconfig cupid_ios27_defconfig -D ../device
+          ./unixnu fetch -D ../device
+          ./unixnu status --json -D ../device | tee "$RUNNER_TEMP/status.json"
+          python3 - "$RUNNER_TEMP/status.json" <<'PY'
+          import json, sys
+          status = json.load(open(sys.argv[1]))
+          text = json.dumps(status)
+          for needle in ("ios-27.0.1-24A446", "arm64e", "sm8450", "cupid_ios27"):
+              if needle not in text:
+                  sys.exit(f"::error::resolved status is missing {needle}")
+          print("status resolves the iOS 27 arm64e profile, the sm8450 source and the cupid defconfig")
+          PY
+
+      - name: Build the kernel
+        id: kernel
+        working-directory: UniXNU
+        run: ./unixnu build kernel -D ../device
+
+      - name: Collect text logs
+        if: always() && steps.status.outcome == 'success'
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs"
+          cp "$RUNNER_TEMP/status.json" "$RUNNER_TEMP/logs/" 2>/dev/null || true
+          find out/cupid -type f -name '*.log' -exec cp {} "$RUNNER_TEMP/logs/" \; 2>/dev/null || true
+          find out/cupid -type f -name '*.json' -path '*prelink*' -exec cp {} "$RUNNER_TEMP/logs/" \; 2>/dev/null || true
+          ls -la "$RUNNER_TEMP/logs"
+
+      - name: Upload logs
+        if: always() && steps.status.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cupid-ios27-kernel-logs
+          path: ${{ runner.temp }}/logs/*
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Remove Apple inputs
+        if: always()
+        run: rm -rf out/ipsw out/feeds device/.cache/firmware out/cupid/*/*/tree/.cache/firmware
+
+      - name: Summary
+        if: always()
+        env:
+          KERNEL: ${{ steps.kernel.outcome }}
+        run: |
+          {
+            echo "## cupid / iOS 27.0.1 (24A446, arm64e)"
+            echo
+            echo "| Step | Result |"
+            echo "| --- | --- |"
+            echo "| resolve (defconfig, fetch, status) | ${{ steps.status.outcome }} |"
+            echo "| kernel + prelink | ${KERNEL:-skipped} |"
+            echo
+            echo "iPhone17,2 (D94AP) profile, SM8450 SoC source, cupid defconfig. Text logs only."
+          } >> "$GITHUB_STEP_SUMMARY"

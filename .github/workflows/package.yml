@@ -1,0 +1,96 @@
+name: package
+
+# Full image build (kernel, package, firmware, payload, boot image). It needs
+# the firmware checkout, which does not exist yet: the first step fails with a
+# clear message until obaosp/uefi-cupid is published. Kernel-only CI lives in
+# macos.yml and does not need firmware.
+
+on:
+  workflow_dispatch:
+    inputs:
+      os:
+        description: "OS profile of the images"
+        type: choice
+        options: ["27"]
+        default: "27"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: package-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    runs-on: macos-26
+    timeout-minutes: 240
+    steps:
+      - name: Check the firmware repository exists
+        run: |
+          if ! git ls-remote https://github.com/obaosp/uefi-cupid HEAD >/dev/null 2>&1; then
+            echo "::error::uefi-cupid does not exist yet. Create it from uefi-sheng (cupidPkg + Binaries/cupid) before running the package workflow; kernel-only builds use macos.yml."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          path: device
+          submodules: recursive
+
+      - uses: actions/checkout@v4
+        with:
+          repository: UniXNU/UniXNU
+          path: UniXNU
+          submodules: recursive
+
+      - uses: actions/checkout@v4
+        with:
+          repository: obaosp/uefi-cupid
+          path: uefi-cupid
+          submodules: recursive
+
+      - name: tools
+        run: |
+          brew install dtc llvm lld cmake mtools blacktop/tap/ipsw
+          ok=1
+          for t in clang xcodebuild make git ninja cmake dtc fdtget fdtput aea compression_tool \
+                   mformat mcopy ipsw; do
+            command -v "$t" >/dev/null || { echo "missing tool: $t"; ok=0; }
+          done
+          for t in lld-link llvm-lib llvm-rc llvm-nm llvm-objcopy; do
+            [ -f "/opt/homebrew/opt/llvm/bin/$t" ] || [ -f "/opt/homebrew/opt/lld/bin/$t" ] || { echo "missing tool: $t"; ok=0; }
+          done
+          [ "$ok" = 1 ]
+
+      - name: platform seed
+        env:
+          seed: ${{ secrets.UNIXNU_UNIQUE_CHIP_ID }}
+        run: |
+          if ! [[ "$seed" =~ ^[0-9a-fA-F]{8}$ ]]; then
+            echo 'Set the repository secret UNIXNU_UNIQUE_CHIP_ID: the platform seed of the device, 8 hex digits.' >&2
+            exit 1
+          fi
+
+      - name: install the iOS 27 profile
+        working-directory: device
+        run: scripts/install-os-profile.sh ../UniXNU
+
+      - name: package
+        working-directory: device
+        env:
+          UNIXNU_UNIQUE_CHIP_ID: ${{ secrets.UNIXNU_UNIQUE_CHIP_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: scripts/package.sh --os "${{ inputs.os }}" --uefi ../uefi-cupid
+
+      - name: images
+        uses: actions/upload-artifact@v4
+        with:
+          name: images-${{ inputs.os }}
+          retention-days: 1
+          if-no-files-found: error
+          path: |
+            UniXNU/out/cupid/*/*/boot/boot.img
+            UniXNU/out/cupid/*/*/payload/payload.img
+            UniXNU/out/cupid/*/*/kernel/kernel.macho
+            UniXNU/out/cupid/*/*/package.manifest.json

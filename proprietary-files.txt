@@ -1,0 +1,9 @@
+# Required firmware inputs: relative path | source | SHA-256 | consumer
+#
+# cupid inputs are extracted from the HyperOS 3.0.4.0.VLCMIXM fastboot archive
+# (proprietary-firmware.txt in the LineageOS cupid device tree lists ABL, XBL,
+# TZ, HYP, UEFI and the rest). Nothing is committed: the firmware preflight
+# downloads, extracts and hashes them at build time.
+#
+# Stage 0 needs the UEFI image only; panel, touch firmware and WLAN/BT
+# firmware are added by their driver milestones.

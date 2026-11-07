@@ -1,0 +1,5 @@
+# Copy to local.toml (ignored by Git) to build against local checkouts.
+# The SDK and image tools are documented in UniXNU's unixnu.example.toml.
+[local]
+drivers = "~/Code/dev/drivers"
+kits = "~/Code/dev/kits"

@@ -1,0 +1,84 @@
+schema_version = 2
+
+[board]
+name = "cupid"
+soc = "SM8450"
+description = "Xiaomi 12 (cupid)"
+kit = "cupid"
+soc_source = "sm8450"
+# iPhone-flavoured iOS 27 profile. The profile is shipped in this repository
+# under profiles/os/ and installed into the UniXNU checkout by
+# scripts/install-os-profile.sh; UniXNU main does not carry it yet.
+os_profile = "ios-27.0.1-24A446"
+
+[components]
+# Stage 0. ArmDTPlatform, ArmCpu and XnuPrelink also come from the arm64e arch
+# profile; they are repeated here because arrays replace inherited arrays.
+include = ["ArmDTPlatform", "ArmCpu", "XnuPrelink", "DarwinBoot"]
+
+[kernel]
+defconfig = "cupid_ios27_defconfig"
+archives = [
+  "build-corecrypto-14.py",
+  "build-corecrypto-14.py --namespace",
+  "component:ArmDTPlatform",
+  "component:ArmCpu",
+  "build-libpthread-kernel.py",
+]
+config_fragments = ["arch:configs/common.config", "os:configs/ios.config"]
+patch_series = [
+  "arch:patches/xnu/series",
+  "soc:patches/xnu/series",
+  "os:patches/xnu/series",
+  "device:patches/xnu/series",
+]
+
+[device_tree]
+source = "device:dts/cupid.dts"
+include_dirs = ["soc:dts"]
+
+[firmware]
+# uefi-cupid does not exist yet. The kernel and package steps do not read this
+# section; the firmware step will fail until the Mu-Silicium fork is published.
+config = "cupid"
+dsc = "Platforms/Xiaomi/cupidPkg/cupid.dsc"
+fd = "Build/cupidPkg/{target}_CLANGPDB/FV/SILICIUM_UEFI.fd"
+packages = ["{uefi}", "{uefi}/Platforms/Xiaomi", "{tree}/package", "{tree}/drivers/DarwinBoot", "{edk2}"]
+
+[firmware.defines]
+DEVICE_MODEL = "cupid"
+
+[bootimg]
+dtb = "build/cupid/cupid.dtb"
+# Stock ABL FDT already carries the cont_splash_region on most waipio devices;
+# keep the node here until the live cupid DTB is dumped, then drop it if present.
+dtb_node = [{ path = "/reserved-memory/splash_region", props = [{ name = "label", type = "s", value = "cont_splash_region" }, { name = "reg", type = "x", value = ["0x0", "0xb8000000", "0x0", "0x2b00000"] }] }]
+
+[payload]
+volume = "CUPIDESP"
+size_mib = 176
+loader = "firmware"
+title = "iOS 27"
+dram_size = "0x80000000"
+panic_screen = true
+kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "-no_slto_panic", "use_contiguous_hint=0", "native-ufs-root=1"]
+
+[payload.adt]
+# SM8450 msm-id 457 (0x1C9), from the vendor DTS qcom,msm-id.
+chip_id = "457"
+# REQUIRED measurement: largest contiguous run in cupid's UEFI memory map.
+# 4 GiB is the conservative stage-0 window (8 GiB SKU).
+owned_memory_size = "0x100000000"
+packed_data_ramdisk = true
+persistent_data = true
+unique_chip_id = "required"
+
+[adt.product.string]
+# The framebuffer path is 8-bit until the panel driver lands; the panel is P3.
+artwork-display-gamut = "sRGB"
+
+[package]
+unixnu = "../UniXNU"
+
+[package.defconfig]
+"ios-27.0.1-24A446" = "cupid_ios27_defconfig"
