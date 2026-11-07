@@ -1,8 +1,8 @@
 diff --git a/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c b/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c
-index cd2a9e0..fc2ddff 100644
+index cd2a9e0..47cf765 100644
 --- a/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c
 +++ b/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c
-@@ -128,6 +128,39 @@ STATIC EFI_BLOCK_IO_PROTOCOL  mBlockIo = {
+@@ -128,6 +128,78 @@ STATIC EFI_BLOCK_IO_PROTOCOL  mBlockIo = {
    RamBlockFlush
  };
  
@@ -39,10 +39,49 @@ index cd2a9e0..fc2ddff 100644
 +  return MAX_UINT64;
 +}
 +
++// The prefix ABL prepends is not guaranteed to end on a sector boundary, so
++// the 512-byte walk can miss the FAT. Search for the payload volume label
++// ("CUPIDESP" in board.toml) and derive the boot sector from offset 71.
++#define FAT_LABEL_SCAN_LIMIT (128ULL * 1024 * 1024)
++
++STATIC
++UINT64
++FindFatByLabel (
++  IN CONST UINT8  *Base,
++  IN UINT64        Size
++  )
++{
++  STATIC CONST CHAR8  Label[] = { 'C', 'U', 'P', 'I', 'D', 'E', 'S', 'P' };
++  UINT64              Limit = (Size < FAT_LABEL_SCAN_LIMIT) ? Size : FAT_LABEL_SCAN_LIMIT;
++  UINT64              Index;
++
++  for (Index = 0; (Index + sizeof (Label)) <= Limit; ++Index) {
++    if (Base[Index] != 'C') {
++      continue;
++    }
++    if (CompareMem ((VOID *)(Base + Index), (VOID *)Label, sizeof (Label)) != 0) {
++      continue;
++    }
++    if (Index < 71) {
++      continue;
++    }
++    {
++      UINT64  Boot = Index - 71;
++      if (((Boot + RAM_BLOCK_SIZE) <= Size) &&
++          (Base[Boot + 510] == 0x55) && (Base[Boot + 511] == 0xAA) &&
++          (CompareMem ((VOID *)(Base + Boot + 82), "FAT32", 5) == 0))
++      {
++        return Boot;
++      }
++    }
++  }
++  return MAX_UINT64;
++}
++
  STATIC
  VOID
  PublishInitrd (
-@@ -166,6 +199,19 @@ PublishInitrd (
+@@ -166,6 +238,25 @@ PublishInitrd (
      return;
    }
  
@@ -50,6 +89,12 @@ index cd2a9e0..fc2ddff 100644
 +    CONST UINT8  *Base = (CONST UINT8 *)(UINTN)Start;
 +    UINT64        FatOffset = FindFatBootSector (Base, End - Start);
 +
++    if (FatOffset == MAX_UINT64) {
++      FatOffset = FindFatByLabel (Base, End - Start);
++      if (FatOffset != MAX_UINT64) {
++        DEBUG ((DEBUG_ERROR, "UNIXNURAMDISK: FAT volume label found at boot sector +0x%lx\n", FatOffset));
++      }
++    }
 +    if (FatOffset == MAX_UINT64) {
 +      DEBUG ((DEBUG_ERROR, "UNIXNURAMDISK: no FAT boot sector in 0x%lx bytes; first words %08x %08x\n",
 +              End - Start, ((CONST UINT32 *)Base)[0], ((CONST UINT32 *)Base)[1]));
