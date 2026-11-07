@@ -1,0 +1,11 @@
+--- a/osfmk/arm64/pac_asm.h
++++ b/osfmk/arm64/pac_asm.h
+@@ -150,7 +150,7 @@
+  *   tmp2 - scratch register
+  */
+ .macro PAC_INIT_KEY_STATE	tmp, tmp2
+-#if HAS_NATIVE_PAC
++#if 0 /* Gunyah sets HCR_EL2.APK: EL1 key writes trap as undefined instructions */
+ 	/*
+ 	 * ARMv8.3 keys are shared by EL0 and EL1. The kernel and every process
+ 	 * use one key set per boot. The first CPU through here derives it from

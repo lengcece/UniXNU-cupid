@@ -1,3 +1,1 @@
-# Board XNU patch paths, one per line in application order.
-# Stage 0 needs none: cupid differences are device tree and configuration only.
-# Add a patch here when a board workaround cannot live in the shared series.
+pac-skip-trapped-keys.patch
