@@ -147,6 +147,42 @@ jobs:
         working-directory: UniXNU
         run: ./unixnu build kernel -D ../device
 
+      - name: Kernel panic diagnostics
+        if: always()
+        working-directory: UniXNU
+        run: |
+          export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
+          K=$(find out/cupid -path '*/kernel/kernel.macho' | head -1)
+          [ -n "$K" ] || { echo "no kernel.macho"; exit 0; }
+          {
+            echo "kernel: $K"
+            echo "bytes: $(wc -c < "$K")"
+            llvm-nm -n "$K" > "$RUNNER_TEMP/syms.txt" 2>/dev/null || true
+            PC=0xfffffff00ad881c0
+            python3 - "$PC" "$RUNNER_TEMP/syms.txt" <<'PY2'
+import sys
+pc=int(sys.argv[1],16); best=None
+for line in open(sys.argv[2]):
+    p=line.split()
+    if len(p)>=3:
+        try: a=int(p[0],16)
+        except ValueError: continue
+        if a<=pc and (best is None or a>best[0]): best=(a,p[2])
+print("nearest:", hex(best[0]), best[1], "offset", hex(pc-best[0]) if best else "?")
+PY2
+            llvm-objdump -d --start-address=0xfffffff00ad88160 --stop-address=0xfffffff00ad88220 "$K" | tail -50
+          } > "$RUNNER_TEMP/kernel-diag.txt" 2>&1
+          cat "$RUNNER_TEMP/kernel-diag.txt"
+
+      - name: Upload kernel diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cupid-kernel-diag
+          path: ${{ runner.temp }}/kernel-diag.txt
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Patch DarwinBoot window diagnostics
         working-directory: UniXNU
         run: |
