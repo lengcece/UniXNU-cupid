@@ -106,16 +106,34 @@ int main() {
   check(offsetof(Utrd, command_desc_base_addr) == 16, "UTRD UCD base DW4-5");
   check(offsetof(Utrd, prd_table_length) == 28, "UTRD PRDT DW7");
   check(sizeof(CommandUpiu) == 32, "command UPIU 32 bytes");
+  check(offsetof(CommandUpiu, lun) == 1, "UPIU LUN at b1");
+  check(offsetof(CommandUpiu, task_tag) == 2, "UPIU task tag at b2");
+  check(offsetof(CommandUpiu, cdb) == 12, "UPIU CDB at b12");
+  check(sizeof(ResponseUpiu) == 52, "response UPIU 52 bytes");
+  check(sizeof(PrdtEntry) == 16, "PRDT entry 16 bytes");
+  check(kUcdResponseOffset == 512 && kUcdPrdtOffset == 1024, "UCD layout");
+  check(prdtSize(6) == 8, "PRDT size padded to 4 bytes");
+  check(prdtSize(16) == 16, "PRDT size aligned stays");
 
   CommandUpiu upiu{};
   buildReadCapacity10(upiu, 0, 3);
   check(upiu.cdb[0] == 0x25, "READ CAPACITY(10) opcode");
   check(upiu.task_tag == 3, "task tag");
-  check(upiu.transaction_type == 0x00, "COMMAND UPIU");
+  check(upiu.type_flags == 0x00, "COMMAND UPIU type");
 
   buildTestUnitReady(upiu, 1, 4);
   check(upiu.cdb[0] == 0x00, "TEST UNIT READY opcode");
   check(upiu.cdb[1] == (1u << 5), "LUN in CDB byte 1");
+  check(upiu.lun == 1, "LUN in UPIU b1");
+
+  ResponseUpiu rsp{};
+  rsp.response = 0;
+  rsp.status = 0;
+  rsp.residual_transfer_count = 12;
+  check(responseSuccess(rsp), "response success");
+  check(responseStatus(rsp) == 0, "status byte");
+  rsp.response = 1;
+  check(!responseSuccess(rsp), "response failure detected");
 
   // --- Command path against the fake controller ----------------------------
   FakeRegs fake;

@@ -118,32 +118,69 @@ enum : uint8_t {
   kUtpNoDataTransfer = 0,
 };
 
-// Command UPIU (32 bytes): 12-byte header, 16-byte CDB, 4 bytes reserved.
+// Command UPIU (32 bytes), UFS UPIU header DW0-DW2 + 16-byte CDB + 4 reserved.
 struct CommandUpiu {
-  uint8_t transaction_type;
-  uint8_t flags;
-  uint8_t lun;
-  uint8_t task_tag;
-  uint8_t iid;
-  uint8_t command_set_type;
-  uint8_t response;
-  uint8_t status;
-  uint8_t ehs_length;
-  uint8_t device_info;
-  uint16_t data_segment_length;
-  uint8_t cdb[16];
-  uint32_t reserved;
+  uint8_t type_flags;   // b0: transaction type (0x00 = COMMAND) | flags
+  uint8_t lun;          // b1
+  uint8_t task_tag;     // b2
+  uint8_t iid_cs;       // b3: IID (high nibble) | command set type (low nibble)
+  uint8_t response;     // b4
+  uint8_t status;       // b5
+  uint8_t ehs_length;   // b6
+  uint8_t device_info;  // b7
+  uint32_t data_segment_length;  // b8-11, big-endian on the wire
+  uint8_t cdb[16];      // b12-27
+  uint32_t reserved;    // b28-31
 };
 static_assert(sizeof(CommandUpiu) == 32, "command UPIU is 32 bytes");
+static_assert(offsetof(CommandUpiu, lun) == 1, "UPIU LUN at b1");
+static_assert(offsetof(CommandUpiu, task_tag) == 2, "UPIU task tag at b2");
+static_assert(offsetof(CommandUpiu, cdb) == 12, "UPIU CDB at b12");
+
+// Response UPIU: 12-byte header + utp_cmd_rsp (40 bytes) = 52.
+struct ResponseUpiu {
+  uint8_t type_flags;   // b0
+  uint8_t lun;          // b1
+  uint8_t task_tag;     // b2
+  uint8_t iid_cs;       // b3
+  uint8_t response;     // b4
+  uint8_t status;       // b5
+  uint8_t ehs_length;   // b6
+  uint8_t device_info;  // b7
+  uint32_t data_segment_length;  // b8-11
+  uint32_t residual_transfer_count;  // DW3
+  uint32_t reserved[4];              // DW4-7
+  uint16_t sense_data_len;           // DW8
+  uint8_t sense_data[18];
+};
+static_assert(sizeof(ResponseUpiu) == 52, "response UPIU is 52 bytes");
+
+// Physical Region Descriptor entry: 16 bytes; size is 4-byte granular.
+struct PrdtEntry {
+  uint64_t addr;
+  uint32_t reserved;
+  uint32_t size;
+};
+static_assert(sizeof(PrdtEntry) == 16, "PRDT entry is 16 bytes");
+
+constexpr uint32_t kPrdtMaxBytes = 256 * 1024;
+constexpr uint32_t kUcdCommandOffset = 0;
+constexpr uint32_t kUcdResponseOffset = 512;
+constexpr uint32_t kUcdPrdtOffset = 1024;
+
+// The PRDT byte count must be padded to a 4-byte boundary.
+constexpr uint32_t prdtSize(uint32_t bytes) { return (bytes + 3u) & ~3u; }
+
+// Command completion: OCS lives in the UTRD, response/status in the UPIU.
+inline uint8_t responseStatus(const ResponseUpiu& r) { return r.status; }
+inline bool responseSuccess(const ResponseUpiu& r) { return r.response == 0 && r.status == 0; }
 
 inline void initCommandUpiu(CommandUpiu& upiu, uint8_t lun, uint8_t task_tag, uint16_t data_bytes) {
   std::memset(&upiu, 0, sizeof(upiu));
-  upiu.transaction_type = 0x00;  // COMMAND UPIU
-  upiu.flags = 0x00;
+  upiu.type_flags = 0x00;  // COMMAND UPIU, no flags
   upiu.lun = lun;
   upiu.task_tag = task_tag;
-  upiu.iid = 0;
-  upiu.command_set_type = 0;
+  upiu.iid_cs = 0;  // IID 0, SCSI command set
   upiu.data_segment_length = data_bytes;
 }
 
