@@ -1,0 +1,24 @@
+diff --git a/DarwinBootPkg/Driver/DarwinBoot.c b/DarwinBootPkg/Driver/DarwinBoot.c
+index 3b6cafc..85de371 100644
+--- a/DarwinBootPkg/Driver/DarwinBoot.c
++++ b/DarwinBootPkg/Driver/DarwinBoot.c
+@@ -533,11 +533,19 @@ AllocateWindow (KERNEL *Kernel, UINT64 WindowSize, EFI_PHYSICAL_ADDRESS *Address
+     UINTN  Row = 1;
+     UnicodeSPrint (Line, sizeof (Line), L"NO WINDOW %lx BIG RUN %lx @ %lx", WindowSize, BestBytes, BestStart);
+     DiagDraw (Line, 0);
++    DEBUG ((DEBUG_ERROR, "DARWINBOOT: NO WINDOW 0x%lx BIG RUN 0x%lx @ 0x%lx\n",
++            WindowSize, BestBytes, BestStart));
++    DEBUG ((DEBUG_ERROR, "DARWINBOOT: NO WINDOW 0x%lx BIG RUN 0x%lx @ 0x%lx\n",
++            WindowSize, BestBytes, BestStart));
+     for (Offset = 0; Offset + Stride <= Size; Offset += Stride) {
+       Descriptor = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)Map + Offset);
+       if ((Descriptor->Type == EfiConventionalMemory) && (Descriptor->NumberOfPages >= 0x400) && (Row < 8)) {
+         UnicodeSPrint (Line, sizeof (Line), L"FREE %lx + %lx", Descriptor->PhysicalStart, EFI_PAGES_TO_SIZE (Descriptor->NumberOfPages));
+         DiagDraw (Line, Row++);
++        DEBUG ((DEBUG_ERROR, "DARWINBOOT: FREE 0x%lx + 0x%lx\n",
++                Descriptor->PhysicalStart, EFI_PAGES_TO_SIZE (Descriptor->NumberOfPages)));
++        DEBUG ((DEBUG_ERROR, "DARWINBOOT: FREE 0x%lx + 0x%lx\n",
++                Descriptor->PhysicalStart, EFI_PAGES_TO_SIZE (Descriptor->NumberOfPages)));
+       }
+     }
+ 

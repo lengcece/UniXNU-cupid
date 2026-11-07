@@ -89,7 +89,7 @@ chip_id = "457"
 # Measured /proc/iomem: the largest contiguous System RAM run is
 # 0x840000000-0x97fffffff (5 GiB) with a reserved tail from 0x96ef68000.
 # 0x12e000000 (4.6875 GiB) stays below that tail.
-owned_memory_size = "0x12e000000"
+owned_memory_size = "0x80000000"
 packed_data_ramdisk = true
 persistent_data = true
 unique_chip_id = "required"

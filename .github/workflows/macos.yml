@@ -147,6 +147,12 @@ jobs:
         working-directory: UniXNU
         run: ./unixnu build kernel -D ../device
 
+      - name: Patch DarwinBoot window diagnostics
+        working-directory: UniXNU
+        run: |
+          git -C drivers/DarwinBoot apply \
+            "$GITHUB_WORKSPACE/device/patches/darwinboot/0001-darwinboot-log-window-failure.patch"
+
       - name: Build the package
         id: package
         working-directory: UniXNU
