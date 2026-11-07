@@ -1,0 +1,30 @@
+name: ufs-regs
+
+# Host check for package/Sm8450Ufs: compiles the register table and its probe
+# with a plain C++ compiler. No IOKit, no device.
+
+on:
+  push:
+    paths:
+      - "package/Sm8450Ufs/**"
+      - "package/Sm8450Ufs/tests/**"
+      - ".github/workflows/ufs-regs.yml"
+  pull_request:
+    paths:
+      - "package/Sm8450Ufs/**"
+      - "package/Sm8450Ufs/tests/**"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run
+        run: |
+          c++ --version | head -n 1
+          c++ -std=c++17 -O2 -Wall -Wextra -Werror \
+            package/Sm8450Ufs/tests/check-sm8450-ufs-regs.cpp -o /tmp/check-ufs
+          /tmp/check-ufs
