@@ -53,6 +53,16 @@ jobs:
           path: UniXNU
           persist-credentials: false
 
+      - name: Repair the stale ArmCpu gitlink
+        working-directory: UniXNU
+        run: |
+          # UniXNU main pins drivers/ArmCpu at 2e11cda72740b985dedde3e32ba72b0fd64eb475.
+          # The upstream repository no longer contains that commit (it was rebased),
+          # so `git submodule update --init --recursive` fails in unixnu fetch/build.
+          # Pin the index to the existing ArmCpu main commit for this build.
+          git update-index --cacheinfo 160000,93a5030c5d983d0ef90f0fca93879d6e36ad1ba8,drivers/ArmCpu
+          git ls-tree HEAD drivers/ArmCpu
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"

@@ -24,8 +24,9 @@ archives = [
   "component:ArmDTPlatform",
   "component:ArmCpu",
   "build-libpthread-kernel.py",
+  "build-fileset-release-reference.py --tree . --lto",
 ]
-config_fragments = ["arch:configs/common.config", "os:configs/ios.config"]
+config_fragments = ["arch:configs/common.config", "soc:configs/sm8450.config", "os:configs/ios.config"]
 patch_series = [
   "arch:patches/xnu/series",
   "soc:patches/xnu/series",
