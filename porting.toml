@@ -10,7 +10,7 @@ summary = "Xiaomi 12 (cupid, SM8450) running iOS 27.0.1 (24A446, arm64e) under a
 id = "configuration"
 status = "implemented"
 components = []
-paths = ["board.toml", "feeds.toml", "configs/**", "profiles/**", ".github/**", ".gitignore", "scripts/install-os-profile.sh"]
+paths = ["board.toml", "feeds.toml", "configs/**", "profiles/**", ".github/**", ".gitignore", "scripts/install-os-profile.sh", "scripts/build-cupid-dtb.sh", "notes/**"]
 inputs = ["SM8450 SoC source pin; iPhone-flavoured iOS 27.0.1 build 24A446 profile; cupid defconfig and device tree.", "UniXNU main does not ship an ios-27 profile: this repository carries profiles/os/ios-27.0.1-24A446 and installs it into the checkout."]
 configuration = ["board.os_profile = ios-27.0.1-24A446; board.soc = SM8450; board.soc_source = sm8450; schema_version = 2.", "profiles/os/ios-27.0.1-24A446 is an iPhone17,2 (D94AP) profile: IPSW pins, AMFI early-init address 0xfffffff00921000c, prelink roots, root/SystemOS image digests and volume UUIDs, and abi/original-classes.json.", "NOT the shipped ipados-27.0.1-24A446 profile: same build and XNU source, different IPSW, original kexts and ADT identity."]
 procedure = ["Read https://unixnu.com/porting/device-repository and https://unixnu.com/porting/records.", "Run scripts/install-os-profile.sh ../UniXNU to install profiles/os/ios-27.0.1-24A446 into the UniXNU checkout.", "Run ./unixnu defconfig cupid_ios27_defconfig -D ../UniXNU-cupid, ./unixnu fetch -D ../UniXNU-cupid, ./unixnu status --json -D ../UniXNU-cupid."]
