@@ -162,7 +162,7 @@ jobs:
         working-directory: UniXNU
         env:
           UNIXNU_UNIQUE_CHIP_ID: ${{ secrets.UNIXNU_UNIQUE_CHIP_ID }}
-        run: ./unixnu build payload -D ../device --unique-chip-id "$UNIXNU_UNIQUE_CHIP_ID"
+        run: ./unixnu build payload -D ../device --uefi ../uefi-cupid --unique-chip-id "$UNIXNU_UNIQUE_CHIP_ID"
 
       - name: Build the boot image
         id: bootimg
