@@ -91,24 +91,14 @@ enum : uint8_t {
 enum : uint32_t { kUicResultSuccess = 0x00 };
 
 // UTP Transfer Request Descriptor (32 bytes).
+// DW0-3 are kept as raw words: the header packs a bitfield layout that a plain
+// byte-per-flag struct would pad to 40 bytes. The static asserts below bound it.
 struct Utrd {
-  uint8_t cci;
-  uint8_t ehs_length;
-  uint8_t enable_crypto;
-  uint8_t reserved2;
-  uint8_t interrupt;
-  uint8_t data_direction;
-  uint8_t reserved1;
-  uint8_t command_type;
-  uint32_t dunl;
-  uint8_t ocs;
-  uint8_t cds;
-  uint16_t ldbc;
-  uint32_t dunu;
-  uint64_t command_desc_base_addr;
-  uint16_t response_upiu_length;
+  uint32_t header[4];  // DW0-3: CCI/EHS, flags, DUNL, OCS/CDS/LDBC/DUNU
+  uint64_t command_desc_base_addr;  // DW4-5
+  uint16_t response_upiu_length;    // DW6
   uint16_t response_upiu_offset;
-  uint16_t prd_table_length;
+  uint16_t prd_table_length;  // DW7
   uint16_t prd_table_offset;
 };
 static_assert(sizeof(Utrd) == 32, "UTRD is 32 bytes");
