@@ -14,7 +14,7 @@ paths = ["board.toml", "feeds.toml", "configs/**", "profiles/**", ".github/**", 
 inputs = ["SM8450 SoC source pin; iPhone-flavoured iOS 27.0.1 build 24A446 profile; cupid defconfig and device tree.", "UniXNU main does not ship an ios-27 profile: this repository carries profiles/os/ios-27.0.1-24A446 and installs it into the checkout."]
 configuration = ["board.os_profile = ios-27.0.1-24A446; board.soc = SM8450; board.soc_source = sm8450; schema_version = 2.", "profiles/os/ios-27.0.1-24A446 is an iPhone17,2 (D94AP) profile: IPSW pins, AMFI early-init address 0xfffffff00921000c, prelink roots, root/SystemOS image digests and volume UUIDs, and abi/original-classes.json.", "NOT the shipped ipados-27.0.1-24A446 profile: same build and XNU source, different IPSW, original kexts and ADT identity."]
 procedure = ["Read https://unixnu.com/porting/device-repository and https://unixnu.com/porting/records.", "Run scripts/install-os-profile.sh ../UniXNU to install profiles/os/ios-27.0.1-24A446 into the UniXNU checkout.", "Run ./unixnu defconfig cupid_ios27_defconfig -D ../UniXNU-cupid, ./unixnu fetch -D ../UniXNU-cupid, ./unixnu status --json -D ../UniXNU-cupid."]
-findings = ["iOS 27.0.1 and iPadOS 27.0.1 share build 24A446 and the same public XNU source (xnu-12377.121.6), so the OS patch series is shared. Only the IPSW, the original kexts and the ADT identity differ, which is why the profile is a separate directory rather than a board override.", "An iPhone profile is required for a phone: iPadOS presents iPad product identity, idiom and display assumptions that SpringBoard and UIKit read from /product.", "The profile was reconstructed from the published UniXNU-ishtar patches 0001, 0002 and 0005; the AMFI address is the masked-code-verified iPhone17,2 value, not the iPad17,3 one.", "Arrays replace inherited arrays: board.toml repeats every selected component, configuration fragment and patch series entry."]
+findings = ["iOS 27.0.1 and iPadOS 27.0.1 share build 24A446 and the same public XNU source (xnu-12377.121.6), so the OS patch series is shared. Only the IPSW, the original kexts and the ADT identity differ, which is why the profile is a separate directory rather than a board override.", "An iPhone profile is required for a phone: iPadOS presents iPad product identity, idiom and display assumptions that SpringBoard and UIKit read from /product.", "The profile was reconstructed from the published UniXNU-ishtar patches 0001, 0002 and 0005; the AMFI address is the masked-code-verified iPhone17,2 value, not the iPad17,3 one.", "Arrays replace inherited arrays: board.toml repeats every selected component, configuration fragment and patch series entry.", "The macOS workflow builds the EDK II package (UniXNU.efi) after the kernel, so a push that changes board.toml, profiles, configs or the workflow itself exercises image assembly without the phone."]
 completion = ["status resolves ios-27.0.1-24A446 with arch arm64e, the sm8450 SoC source and the cupid defconfig; all source pins resolve."]
 limits = ["The iPhone17,2 identity advertises a 1320x2868 display; cupid is 1080x2400. Display identity is corrected with the panel milestone."]
 next_action = ["Run the macOS kernel workflow and attach its defconfig/status/kernel result."]
@@ -28,6 +28,11 @@ result = "Format 2 board configuration selecting SM8450, ios-27.0.1-24A446 and t
 kind = "source"
 reference = "profiles/os/ios-27.0.1-24A446/profile.toml"
 result = "iPhone17,2 IPSW pins, arm64e architecture selection, prelink roots, AMFI early-init address and root image UUIDs."
+
+[[area.evidence]]
+kind = "source"
+reference = ".github/workflows/macos.yml"
+result = "Resolve, arm64e kernel build, iPhone17,2 prelink and EDK II package steps used by the host-verified runs."
 
 [[area]]
 id = "firmware"
