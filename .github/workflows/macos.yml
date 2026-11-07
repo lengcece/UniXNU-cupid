@@ -59,6 +59,20 @@ jobs:
           path: UniXNU
           persist-credentials: false
 
+      - name: Check out the firmware repository
+        uses: actions/checkout@v4
+        with:
+          repository: obaosp/uefi-cupid
+          path: uefi-cupid
+          persist-credentials: false
+
+      - name: Check out the firmware submodules
+        working-directory: uefi-cupid
+        run: |
+          git submodule update --init --depth 1 \
+            Common/Mu Common/Mu_OEM_Sample Mu_Basecore Silicium-ACPI \
+            Silicon/Silicium/OpensslPkg/Library/OpensslLib/openssl
+
       - name: Repair the stale ArmCpu gitlink
         working-directory: UniXNU
         run: |
@@ -124,6 +138,11 @@ jobs:
         working-directory: UniXNU
         run: ./unixnu build package -D ../device
 
+      - name: Build the firmware
+        id: firmware
+        working-directory: UniXNU
+        run: ./unixnu build firmware -D ../device --uefi ../uefi-cupid
+
       - name: Collect text logs
         if: always() && steps.status.outcome == 'success'
         run: |
@@ -159,6 +178,7 @@ jobs:
             echo "| resolve (defconfig, fetch, status) | ${{ steps.status.outcome }} |"
             echo "| kernel + prelink | ${KERNEL:-skipped} |"
             echo "| package (UniXNU.efi) | ${{ steps.package.outcome }} |"
+            echo "| firmware (SILICIUM_UEFI.fd) | ${{ steps.firmware.outcome }} |"
             echo
             echo "iPhone17,2 (D94AP) profile, SM8450 SoC source, cupid defconfig. Text logs only."
           } >> "$GITHUB_STEP_SUMMARY"

@@ -39,15 +39,24 @@ source = "device:dts/cupid.dts"
 include_dirs = ["soc:dts"]
 
 [firmware]
-# uefi-cupid does not exist yet. The kernel and package steps do not read this
-# section; the firmware step will fail until the Mu-Silicium fork is published.
+# uefi-cupid is the Mu-Silicium fork for this board; the cupidPkg platform is
+# the minimal vendor-HW-off configuration on WaipioPkg (SM8450).
 config = "cupid"
 dsc = "Platforms/Xiaomi/cupidPkg/cupid.dsc"
 fd = "Build/cupidPkg/{target}_CLANGPDB/FV/SILICIUM_UEFI.fd"
-packages = ["{uefi}", "{uefi}/Platforms/Xiaomi", "{tree}/package", "{tree}/drivers/DarwinBoot", "{edk2}"]
+# Gic-Spurious masks interrupts with no registered handler (as sheng does).
+patches = ["Resources/MuPatches/Gic-Spurious.patch"]
+# Binaries is deliberately absent: cupidPkg runs with CUPID_VENDOR_HW = 0 and
+# needs no stock vendor module. Add it when Binary/cupid is imported.
+submodules = ["Common/Mu", "Common/Mu_OEM_Sample", "Silicium-ACPI", "Silicon/Silicium/OpensslPkg/Library/OpensslLib/openssl"]
+packages = ["{uefi}", "{uefi}/Platforms/Xiaomi", "{tree}/package", "{tree}/drivers/DarwinBoot", "{edk2}", "{uefi}/Common/Mu", "{uefi}/Common/Mu_OEM_Sample", "{uefi}/Silicon/Qualcomm", "{uefi}/Silicon/Silicium", "{uefi}/Silicium-ACPI", "{uefi}/Silicium-ACPI/Platforms/Xiaomi", "{uefi}/Silicium-ACPI/Silicon/Qualcomm"]
 
 [firmware.defines]
+ENABLE_SECUREBOOT = "1"
 DEVICE_MODEL = "cupid"
+MEMORY_PROTECTION = "TRUE"
+SHIP_MODE = "FALSE"
+BUILDID_STRING = "cupid-ios27"
 
 [bootimg]
 dtb = "build/cupid/cupid.dtb"

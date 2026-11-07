@@ -14,7 +14,7 @@ paths = ["board.toml", "feeds.toml", "configs/**", "profiles/**", ".github/**", 
 inputs = ["SM8450 SoC source pin; iPhone-flavoured iOS 27.0.1 build 24A446 profile; cupid defconfig and device tree.", "UniXNU main does not ship an ios-27 profile: this repository carries profiles/os/ios-27.0.1-24A446 and installs it into the checkout."]
 configuration = ["board.os_profile = ios-27.0.1-24A446; board.soc = SM8450; board.soc_source = sm8450; schema_version = 2.", "profiles/os/ios-27.0.1-24A446 is an iPhone17,2 (D94AP) profile: IPSW pins, AMFI early-init address 0xfffffff00921000c, prelink roots, root/SystemOS image digests and volume UUIDs, and abi/original-classes.json.", "NOT the shipped ipados-27.0.1-24A446 profile: same build and XNU source, different IPSW, original kexts and ADT identity."]
 procedure = ["Read https://unixnu.com/porting/device-repository and https://unixnu.com/porting/records.", "Run scripts/install-os-profile.sh ../UniXNU to install profiles/os/ios-27.0.1-24A446 into the UniXNU checkout.", "Run ./unixnu defconfig cupid_ios27_defconfig -D ../UniXNU-cupid, ./unixnu fetch -D ../UniXNU-cupid, ./unixnu status --json -D ../UniXNU-cupid."]
-findings = ["iOS 27.0.1 and iPadOS 27.0.1 share build 24A446 and the same public XNU source (xnu-12377.121.6), so the OS patch series is shared. Only the IPSW, the original kexts and the ADT identity differ, which is why the profile is a separate directory rather than a board override.", "An iPhone profile is required for a phone: iPadOS presents iPad product identity, idiom and display assumptions that SpringBoard and UIKit read from /product.", "The profile was reconstructed from the published UniXNU-ishtar patches 0001, 0002 and 0005; the AMFI address is the masked-code-verified iPhone17,2 value, not the iPad17,3 one.", "Arrays replace inherited arrays: board.toml repeats every selected component, configuration fragment and patch series entry.", "The macOS workflow builds the EDK II package (UniXNU.efi) after the kernel, so a push that changes board.toml, profiles, configs or the workflow itself exercises image assembly without the phone."]
+findings = ["iOS 27.0.1 and iPadOS 27.0.1 share build 24A446 and the same public XNU source (xnu-12377.121.6), so the OS patch series is shared. Only the IPSW, the original kexts and the ADT identity differ, which is why the profile is a separate directory rather than a board override.", "An iPhone profile is required for a phone: iPadOS presents iPad product identity, idiom and display assumptions that SpringBoard and UIKit read from /product.", "The profile was reconstructed from the published UniXNU-ishtar patches 0001, 0002 and 0005; the AMFI address is the masked-code-verified iPhone17,2 value, not the iPad17,3 one.", "Arrays replace inherited arrays: board.toml repeats every selected component, configuration fragment and patch series entry.", "The macOS workflow builds the EDK II package (UniXNU.efi) after the kernel, so a push that changes board.toml, profiles, configs or the workflow itself exercises image assembly without the phone.", "[firmware] now names obaosp/uefi-cupid cupidPkg, a minimal vendor-HW-off platform on WaipioPkg (SM8450). No Binaries/cupid is required until CUPID_VENDOR_HW is enabled."]
 completion = ["status resolves ios-27.0.1-24A446 with arch arm64e, the sm8450 SoC source and the cupid defconfig; all source pins resolve."]
 limits = ["The iPhone17,2 identity advertises a 1320x2868 display; cupid is 1080x2400. Display identity is corrected with the panel milestone."]
 next_action = ["Run the macOS kernel workflow and attach its defconfig/status/kernel result."]
@@ -36,17 +36,26 @@ result = "Resolve, arm64e kernel build, iPhone17,2 prelink and EDK II package st
 
 [[area]]
 id = "firmware"
-status = "planned"
+status = "implemented"
 components = ["DarwinBoot"]
 paths = ["proprietary-files.txt", "scripts/*firmware*"]
 inputs = ["A Mu-Silicium UEFI fork for cupid (uefi-cupid), cupid's stock UEFI/ABL firmware and the live ABL device tree.", "PSCI SMC entry, GOP framebuffer handoff and the memory map UniXNU may own."]
 configuration = ["board.toml [firmware] names config cupid, dsc Platforms/Xiaomi/cupidPkg/cupid.dsc and the SILICIUM_UEFI.fd path.", "Firmware DSC/FDF must embed UniXNU, UniXNUDxe, DarwinBoot, UniXNURamDiskDxe, DiskIoDxe and FAT support."]
 procedure = ["Fork uefi-sheng into uefi-cupid, add cupidPkg and its Binaries/cupid module from the stock UEFI image.", "Build with ./unixnu build firmware -D ../UniXNU-cupid --uefi ../uefi-cupid.", "Record the firmware revision, FD size and the handoff memory map."]
-findings = ["The firmware repository does not exist yet; [firmware] values describe the intended cupidPkg layout and are not yet buildable.", "The stock splash_region (0xb8000000 + 0x2b00000) is present in waipio display DTSI and is assumed in the payload and boot image."]
+findings = ["uefi-cupid is forked from UniXNU/uefi-sheng and carries Platforms/Xiaomi/cupidPkg: CUPID_VENDOR_HW = 0, USE_CUSTOM_DISPLAY_DRIVER = 0, WaipioPkg.dsc.inc (SM8450, 8 cores, GIC 0x17100000), SimpleFbDxe on ABL's 1080x2400 scan-out, and UniXNUPkg + DarwinBoot + UniXNURamDiskDxe.", "The memory and configuration maps are copied from the SM8450 ingres platform (same DRAM base, FD window and SoC carveouts) and are REQUIRED to be replaced with cupid's stock uefiplat.cfg.", "The minimal configuration deliberately omits Binaries/cupid, so no stock vendor module is needed to build the firmware volume; vendor clocks, UFS, USB, charger and the stock display chain are a later CUPID_VENDOR_HW = 1 step.", "The stock splash_region (0xb8000000 + 0x2b00000) is present in waipio display DTSI and is assumed in the payload and boot image."]
 completion = ["Firmware image builds, enters UniXNU, publishes the framebuffer and preserves documented reservations."]
-limits = ["Blocked on the uefi-cupid fork and the stock cupid firmware package."]
-next_action = ["Create uefi-cupid from uefi-sheng and extract Binaries/cupid from the HyperOS fastboot archive."]
-evidence = []
+limits = ["cupidPkg has not been compiled yet; the memory map and FD base are ingres values, and vendor hardware is off."]
+next_action = ["Build firmware with ./unixnu build firmware --uefi ../uefi-cupid and record the FD size; then import Binaries/cupid from the HyperOS archive for CUPID_VENDOR_HW = 1."]
+
+[[area.evidence]]
+kind = "source"
+reference = "https://github.com/obaosp/uefi-cupid/blob/bce96f77d07ec90a516432df466b8cd3af7272fc/Platforms/Xiaomi/cupidPkg/cupid.dsc"
+result = "cupidPkg platform definition: WaipioPkg include, 1080x2400 frame buffer, UniXNU/DarwinBoot/UniXNURamDiskDxe components, CUPID_VENDOR_HW = 0."
+
+[[area.evidence]]
+kind = "source"
+reference = "https://github.com/obaosp/uefi-cupid/blob/bce96f77d07ec90a516432df466b8cd3af7272fc/Platforms/Xiaomi/cupidPkg/README.md"
+result = "Documents the ingres-derived memory map, the missing stock uefiplat.cfg replacement, and the vendor-hardware import that Binaries/cupid needs."
 
 [[area]]
 id = "cpu"
