@@ -87,6 +87,13 @@
       "original_sha256": "1c23dd0d199a6667df99e692549ba9ca0545d7469b1a667b5cc85ebdc21734a0",
       "native_symbol": "_get_thread_ro_unchecked",
       "evidence": "Sixteen-byte getter: bti c; cbz x0; ldr x0,[x0,#0x4e8]; ret. The native 12377 _get_thread_ro_unchecked at __TEXT_EXEC+0x7fd744 is bti c; ldr x0,[x0,#0x4e8]; ret, the same field from the native thread layout; the original adds only a null check. AppleM2's trace path calls it with the current thread, so the binding is semantically equivalent."
+    },
+    {
+      "original": "0xfffffff00b0de1d8",
+      "original_size": 132,
+      "original_sha256": "c4d9c5197bc479af03299f2bfad6e1c52bff9caa00293d193ba4b47c17a90e78",
+      "native_symbol": "_unixnu_apple_m2_property",
+      "evidence": "AppleM2ScalerCSCDriver's last stubbed import: it zeroes the caller buffer (x1, size w2), looks up a string by the key in x0, and copies object+0x55c into the buffer. No 12377 function matched above 0.55 in the relocation-masked search. The device shim zeroes a valid buffer and returns NULL, the no-property path; the known call site ignores the return. Call-site registers in the panic had x1=0, so the shim also checks for NULL."
     }
   ],
   "data": [],

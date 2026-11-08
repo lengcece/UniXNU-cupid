@@ -1,6 +1,6 @@
 --- a/osfmk/kern/debug.c
 +++ b/osfmk/kern/debug.c
-@@ -2578,14 +2578,45 @@
+@@ -2578,14 +2578,60 @@
  }
  #endif /* __arm64__ */
  
@@ -46,8 +46,23 @@
 +__attribute__((used))
 +uint32_t
 +unixnu_apple_m2_clock_state(void)
++{
++	return 0;
++}
++
++/*
++ * AppleM2ScalerCSCDriver's 13432 property helper zeroes a caller buffer, looks up a string
++ * property by key and copies it. The 12377 kernel has no equivalent. Zero a valid buffer and
++ * report "absent" so the driver takes its no-property path instead of the unmapped stub.
++ */
++__attribute__((used))
++void *
++unixnu_apple_m2_property(void *key __unused, void *buffer, uint32_t size)
  {
 -	panic("fileset: original component called an unmapped kernel function from %p (x0 0x%llx x1 0x%llx)",
 -	    __builtin_ptrauth_strip(__builtin_return_address(0), 0), arg0, arg1);
-+	return 0;
++	if (buffer != NULL && size != 0) {
++		bzero(buffer, size);
++	}
++	return NULL;
  }
