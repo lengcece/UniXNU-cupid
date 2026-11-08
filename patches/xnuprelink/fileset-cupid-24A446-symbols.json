@@ -80,6 +80,13 @@
       "original_sha256": "15771c5c905c21b6b46e9cb105693bded5ca0ed96b44af15ce70a859475a157b",
       "native_symbol": "_unixnu_apple_m2_clock_state",
       "evidence": "AppleM2ScalerCSCDriver's start path calls this no-argument reader from 0xfffffff0090a8af0 and uses low bits of the result as a modulo-5 state index in a 100-iteration retry loop. The original body reads two runtime function pointers at 0xfffffff007deb768/0x7deb770 and a node at 0xb822f30; the 12377 native __DATA_CONST placement overwrites those addresses with _bootstrap_pagetables, and a 55%-shape search over the native kernel found no equivalent. The device shim returns state 0 so the driver does not call the unmapped stub; it is a bring-up workaround, not a port of the 13432 reader."
+    },
+    {
+      "original": "0xfffffff00ac2534c",
+      "original_size": 16,
+      "original_sha256": "1c23dd0d199a6667df99e692549ba9ca0545d7469b1a667b5cc85ebdc21734a0",
+      "native_symbol": "_get_thread_ro_unchecked",
+      "evidence": "Sixteen-byte getter: bti c; cbz x0; ldr x0,[x0,#0x4e8]; ret. The native 12377 _get_thread_ro_unchecked at __TEXT_EXEC+0x7fd744 is bti c; ldr x0,[x0,#0x4e8]; ret, the same field from the native thread layout; the original adds only a null check. AppleM2's trace path calls it with the current thread, so the binding is semantically equivalent."
     }
   ],
   "data": [],
