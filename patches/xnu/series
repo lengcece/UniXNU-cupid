@@ -1,2 +1,3 @@
 pac-skip-trapped-keys.patch
 timers-avoid-trapped-physical-timer.patch
+fileset-report-registers.patch

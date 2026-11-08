@@ -1,0 +1,39 @@
+--- a/osfmk/kern/debug.c
++++ b/osfmk/kern/debug.c
+@@ -2578,14 +2578,31 @@
+ }
+ #endif /* __arm64__ */
+ 
++void unixnu_fileset_unmapped_report(uint64_t *registers) __attribute__((noreturn));
++
+ /*
+  * Target of original kext calls into kernel functions this kernel does not have (fileset emission
+- * redirects them here). The return address is the call site in the original component.
++ * redirects them here). A caller may reach this symbol through a tail branch, so x30 can hold a
++ * stale data pointer instead of the call site. Save the raw registers and let the report name the
++ * import stub (x16) and the PAC modifier (x17) as well as the raw and stripped x30.
+  */
+-__attribute__((noinline, noreturn, used))
++__attribute__((naked, noreturn, used))
++void
++unixnu_fileset_unmapped(void)
++{
++	__asm__ volatile(
++	    "sub sp, sp, #0x60\n\t"
++	    "stp x0, x1, [sp, #0x00]\n\t"
++	    "stp x8, x16, [sp, #0x10]\n\t"
++	    "stp x17, x30, [sp, #0x20]\n\t"
++	    "mov x0, sp\n\t"
++	    "bl _unixnu_fileset_unmapped_report\n\t"
++	    "brk #0\n\t");
++}
++
+ void
+-unixnu_fileset_unmapped(uint64_t arg0, uint64_t arg1)
++unixnu_fileset_unmapped_report(uint64_t *r)
+ {
+-	panic("fileset: original component called an unmapped kernel function from %p (x0 0x%llx x1 0x%llx)",
+-	    __builtin_ptrauth_strip(__builtin_return_address(0), 0), arg0, arg1);
++	panic("fileset: original component called an unmapped kernel function from raw %p stripped %p (x0 0x%llx x1 0x%llx x8 0x%llx x16 0x%llx x17 0x%llx)",
++	    (void *)r[5], __builtin_ptrauth_strip((void *)r[5], 0), r[0], r[1], r[2], r[3], r[4]);
+ }
