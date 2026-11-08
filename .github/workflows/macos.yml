@@ -137,6 +137,15 @@ jobs:
           print("status resolves the iOS 27 arm64e profile, the sm8450 source and the cupid defconfig")
           PY
 
+      - name: Install the XnuPrelink reviewed symbols
+        working-directory: UniXNU
+        run: |
+          test -d kits/XnuPrelink/fixtures
+          install -m 0644 \
+            ../device/patches/xnuprelink/fileset-cupid-24A446-symbols.json \
+            kits/XnuPrelink/fixtures/fileset-cupid-24A446-symbols.json
+          python3 -c 'import json,sys; d=json.load(open("kits/XnuPrelink/fixtures/fileset-cupid-24A446-symbols.json")); print("reviewed functions:", len(d["functions"]), "kernelcache:", d["inputs"]["kernelcache_sha256"])'
+
       - name: Build the cupid device tree
         id: dtb
         working-directory: device
@@ -146,6 +155,22 @@ jobs:
         id: kernel
         working-directory: UniXNU
         run: ./unixnu build kernel -D ../device
+
+      - name: Prelink mapping summary
+        if: always()
+        working-directory: UniXNU
+        run: |
+          LOG=$(find out/cupid -name prelink.log | head -1)
+          if [ -n "$LOG" ]; then
+            echo "== $LOG"
+            tail -5 "$LOG"
+          fi
+          REPORT=$(find out/cupid -path '*/kernel/kernel.json' | head -1)
+          if [ -n "$REPORT" ]; then
+          python3 -c 'import json,sys;d=json.load(open(sys.argv[1]));s=d.get("stubbed",{});m=d.get("missing",{});print("allow_missing",d.get("allow_missing"),"mapping_complete",d.get("mapping_complete"));print("stubbed_targets",sum(len(v) for v in s.values()),"sites",sum(sum(v.values()) for v in s.values()));print("missing_targets",sum(len(v) for v in m.values()));[print("owner",k,"stubbed",len(s.get(k,{})),"missing",len(m.get(k,{}))) for k in sorted(set(s)|set(m))]' "$REPORT"
+          else
+            echo "no kernel report"
+          fi
 
       - name: Kernel panic diagnostics
         if: always()

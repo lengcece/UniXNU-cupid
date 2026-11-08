@@ -1,0 +1,73 @@
+{
+  "inputs": {
+    "kernelcache_sha256": "fa07057bf34f33af1ec26681ad0c87c13e5aaa548a300740eddb0e92876e5f95",
+    "entry": "com.apple.kernel"
+  },
+  "functions": [
+    {
+      "original": "0xfffffff00ad05978",
+      "original_size": 68,
+      "original_sha256": "0464008f46d70772cf6ed29599c4126861833abca4b88d434623ebcc85c3a36d",
+      "native_symbol": "___memcpy_chk",
+      "evidence": "Original body compares the requested length (x2) against the destination bound (x3), branches to the shared check-failure path otherwise, and tail-calls the memcpy implementation. Its panic string is '__memcpy_chk object size check failed: dst %p, src %p, (%zu < %zu)' at 0xfffffff00706061c, referenced from 0xfffffff00ad059b0. Source: osfmk/device/subrs.c __memcpy_chk. corecrypto's fipspost_post_integrity calls it through GOT slot 0xfffffff0083e31c8 and the matcher left the original unpaired, so the stub panic reported 0xfffffff00ab15578."
+    },
+    {
+      "original": "0xfffffff00ad059bc",
+      "original_size": 68,
+      "original_sha256": "8db66550e1ffdd0e266d8356cbdf3de0218151e82350e5442fc3d2b61a920b34",
+      "native_symbol": "___memmove_chk",
+      "evidence": "Same bound-check shape as __memcpy_chk; panic string '__memmove_chk object size check failed: dst %p, src %p, (%zu < %zu)' at 0xfffffff00706066e, referenced from 0xfffffff00ad059f4. Source: osfmk/device/subrs.c __memmove_chk."
+    },
+    {
+      "original": "0xfffffff00ad05a00",
+      "original_size": 68,
+      "original_sha256": "ca9deb6e7ed853a99f4f2c857210c21ad40485b83f9db7f795d7d8ec337806e5",
+      "native_symbol": "___memset_chk",
+      "evidence": "Same bound-check shape; panic string '__memset_chk object size check failed: dst %p, c %c, (%zu < %zu)' at 0xfffffff0070606b9, referenced from 0xfffffff00ad05a38. Source: osfmk/device/subrs.c __memset_chk."
+    },
+    {
+      "original": "0xfffffff00ad05a44",
+      "original_size": 216,
+      "original_sha256": "5f2f2d932c9eaee45e365982f492fe104167bfc8c4a8e827e125744af49cec8d",
+      "native_symbol": "___strlcat_chk",
+      "evidence": "Panic string '__strlcat_chk object size check failed: dst %p, src %p, (%zu < %zu)' at 0xfffffff007060701, referenced from 0xfffffff00ad05b10. Source: osfmk/device/subrs.c __strlcat_chk."
+    },
+    {
+      "original": "0xfffffff00ad05b1c",
+      "original_size": 172,
+      "original_sha256": "9508e50ec6c187bab48801dc8dc063e42ea62d4e17c6d053ede444ce944cb8c7",
+      "native_symbol": "___strlcpy_chk",
+      "evidence": "Panic string '__strlcpy_chk object size check failed: dst %p, src %p, (%zu < %zu)' at 0xfffffff00706074c, referenced from 0xfffffff00ad05bbc. Source: osfmk/device/subrs.c __strlcpy_chk."
+    },
+    {
+      "original": "0xfffffff00ad05bc8",
+      "original_size": 204,
+      "original_sha256": "bd88ad8ed15cabca98bc4530ad356c628c54c43ee0dfc55f21ef495877a54e41",
+      "native_symbol": "___strncpy_chk",
+      "evidence": "Panic string '__strncpy_chk object size check failed: dst %p, src %p, (%zu < %zu)' at 0xfffffff007060797, referenced from 0xfffffff00ad05c88. Source: osfmk/device/subrs.c __strncpy_chk."
+    },
+    {
+      "original": "0xfffffff00ad05c94",
+      "original_size": 200,
+      "original_sha256": "c3151256662be3f1b7478b2b532b426fed14dfe7629ee31a6fdb158890a02057",
+      "native_symbol": "___strncat_chk",
+      "evidence": "Panic string '__strncat_chk object size check failed: dst %p, src %p, (%zu < %zu)' at 0xfffffff0070607e2, referenced from 0xfffffff00ad05d4c. Source: osfmk/device/subrs.c __strncat_chk."
+    },
+    {
+      "original": "0xfffffff00ad05d5c",
+      "original_size": 128,
+      "original_sha256": "6ef6b8f38e38b5e10ea7b8ad36e6110c66ce2e30d443e831643842fd6a168e7e",
+      "native_symbol": "___strcpy_chk",
+      "evidence": "Panic string '__strcpy_chk object size check failed: dst %p, src %p, (%zu < %zu)' at 0xfffffff007060837, referenced from 0xfffffff00ad05dd0. Source: osfmk/device/subrs.c __strcpy_chk."
+    },
+    {
+      "original": "0xfffffff00ad05ddc",
+      "original_size": 160,
+      "original_sha256": "20c324668badde1549c3c0d4f13a8f41889f9b131912cc825eb894d90b60a9f2",
+      "native_symbol": "___strcat_chk",
+      "evidence": "Panic string '__strcat_chk object size check failed: dst %p, src %p, (%zu < %zu)' at 0xfffffff007060885, referenced from 0xfffffff00ad05e6c. Source: osfmk/device/subrs.c __strcat_chk."
+    }
+  ],
+  "data": [],
+  "sites": []
+}
