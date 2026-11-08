@@ -1,6 +1,6 @@
 --- a/osfmk/kern/debug.c
 +++ b/osfmk/kern/debug.c
-@@ -2578,14 +2578,118 @@
+@@ -2578,14 +2578,137 @@
  }
  #endif /* __arm64__ */
  
@@ -15,7 +15,8 @@
   */
 -__attribute__((noinline, noreturn, used))
 +__attribute__((naked, noreturn, used))
-+void
+ void
+-unixnu_fileset_unmapped(uint64_t arg0, uint64_t arg1)
 +unixnu_fileset_unmapped(void)
 +{
 +	__asm__ volatile(
@@ -45,18 +46,17 @@
 +
 +static inline boolean_t
 +unixnu_data_candidate(uint64_t value)
-+{
-+	return (value >= 0xfffffff007dd0000ULL && value < 0xfffffff0083ec000ULL) ||
-+	       (value >= 0xfffffff00b6b0000ULL && value < 0xfffffff00b9a0000ULL);
-+}
-+
-+__attribute__((used, noreturn))
- void
--unixnu_fileset_unmapped(uint64_t arg0, uint64_t arg1)
-+unixnu_fileset_unmapped_report(uint64_t *r)
  {
 -	panic("fileset: original component called an unmapped kernel function from %p (x0 0x%llx x1 0x%llx)",
 -	    __builtin_ptrauth_strip(__builtin_return_address(0), 0), arg0, arg1);
++	return (value >= 0xfffffff007dd0000ULL && value < 0xfffffff0083ec000ULL) ||
++	       (value >= 0xfffffff00b6b0000ULL && value < 0xfffffff00b9a0000ULL);
+ }
++
++__attribute__((used, noreturn))
++void
++unixnu_fileset_unmapped_report(uint64_t *r)
++{
 +	uint64_t candidate[6] = { 0, 0, 0, 0, 0, 0 };
 +	int found = 0;
 +
@@ -82,7 +82,7 @@
 +	    (void *)r[30], __builtin_ptrauth_strip((void *)r[30], 0), r[0], r[1], r[8], r[16], r[17],
 +	    (void *)candidate[0], (void *)candidate[1], (void *)candidate[2],
 +	    (void *)candidate[3], (void *)candidate[4], (void *)candidate[5]);
- }
++}
 +
 +/*
 + * AppleM2ScalerCSCDriver from the 13432 kernel calls a clock/state reader that the 12377 source
@@ -113,6 +113,26 @@
 +}
 +
 +
++/*
++ * AppleImage4/Image4's 13432 one-time security-flag initializer. The original
++ * reads a runtime struct and caches status 2 plus a flag word. The 12377
++ * native __DATA_CONST placement overwrote those globals, so return the cached
++ * status and an empty flag word. Image4's callers treat non-zero status as
++ * "initialized"; the AppleImage4 wrappers that compare against 1 take their
++ * cached-status path.
++ */
++__attribute__((used))
++void
++unixnu_apple_image4_flags(uint32_t *status, uint32_t *flags)
++{
++	if (status != NULL) {
++		*status = 2;
++	}
++	if (flags != NULL) {
++		*flags = 0;
++	}
++}
++
 +#define UNIXNU_PROBE(name, value) \
 +	__attribute__((used, noreturn)) void name(void) { panic("unixnu probe: " value); }
 +
@@ -120,7 +140,6 @@
 +UNIXNU_PROBE(unixnu_probe_image4_1, "AppleImage4 0xfffffff00abdea40")
 +UNIXNU_PROBE(unixnu_probe_image4_2, "AppleImage4 0xfffffff00b0de25c")
 +UNIXNU_PROBE(unixnu_probe_image4_3, "AppleImage4 0xfffffff00b0fca08")
-+UNIXNU_PROBE(unixnu_probe_image4_4, "AppleImage4 0xfffffff00b11a998")
 +UNIXNU_PROBE(unixnu_probe_image4_5, "AppleImage4 0xfffffff00b4182c8")
 +
 +#undef UNIXNU_PROBE

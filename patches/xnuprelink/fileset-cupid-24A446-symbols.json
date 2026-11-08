@@ -127,8 +127,8 @@
       "original": "0xfffffff00b11a998",
       "original_size": 240,
       "original_sha256": "90190f8fcbcaa896941c7c087f2a781abe64571d39ca5dbdbef12cbba4ba42f3",
-      "native_symbol": "_unixnu_probe_image4_4",
-      "evidence": "Diagnostic probe: the post-AppleM2 fileset panic still names an unmapped target, and AppleImage4 has six stubbed imports. The target body is pinned by raw-byte sha256 and bound to a probe that panics with its address, so the next boot names the exact target. Replace the probe with a reviewed binding once identified."
+      "native_symbol": "_unixnu_apple_image4_flags",
+      "evidence": "AppleImage4/Image4 one-time security-flag initializer: reads a runtime struct at 0x7e35330 and flag byte 0x7e35350, caches status 2 at 0x7e3520c and a flag word at 0x7e35210, and writes them to out-pointers x0/x1. The 12377 native __DATA_CONST placement overwrote those globals, and no equivalent exists. Device shim writes status 2 and flags 0; Image4 callers treat non-zero status as initialized, and the AppleImage4 wrappers that compare against 1 take the cached-status path. This is a bring-up workaround."
     },
     {
       "original": "0xfffffff00b4182c8",
