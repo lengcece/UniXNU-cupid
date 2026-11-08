@@ -178,9 +178,10 @@ jobs:
         with:
           name: cupid-native-symbols
           path: |
-            UniXNU/build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837.unstripped.noctf
-            UniXNU/build/xnu/fileset-reference/mach.release.bcm2837.unstripped.noctf
+            UniXNU/out/cupid/*/*/tree/build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837.unstripped.noctf
+            UniXNU/out/cupid/*/*/tree/build/xnu/fileset-reference/mach.release.bcm2837.unstripped.noctf
             UniXNU/out/cupid/*/*/kernel/kernel.json
+            UniXNU/out/cupid/*/*/kernel/kernel.map.json
           if-no-files-found: warn
           retention-days: 7
 
