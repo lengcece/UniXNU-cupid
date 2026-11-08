@@ -1,6 +1,6 @@
 --- a/osfmk/kern/debug.c
 +++ b/osfmk/kern/debug.c
-@@ -2578,14 +2578,31 @@
+@@ -2578,14 +2578,45 @@
  }
  #endif /* __arm64__ */
  
@@ -28,12 +28,26 @@
 +	    "brk #0\n\t");
 +}
 +
++__attribute__((used, noreturn))
  void
 -unixnu_fileset_unmapped(uint64_t arg0, uint64_t arg1)
 +unixnu_fileset_unmapped_report(uint64_t *r)
++{
++	panic("fileset: original component called an unmapped kernel function from raw %p stripped %p (x0 0x%llx x1 0x%llx x8 0x%llx x16 0x%llx x17 0x%llx)",
++	    (void *)r[5], __builtin_ptrauth_strip((void *)r[5], 0), r[0], r[1], r[2], r[3], r[4]);
++}
++
++/*
++ * AppleM2ScalerCSCDriver from the 13432 kernel calls a clock/state reader that the 12377 source
++ * does not have. The prelink's native data placement overwrites the globals the original reader
++ * used, so return the first state instead of calling the unmapped stub. The caller uses the low
++ * three bits as a state index and retries; zero is the first state.
++ */
++__attribute__((used))
++uint32_t
++unixnu_apple_m2_clock_state(void)
  {
 -	panic("fileset: original component called an unmapped kernel function from %p (x0 0x%llx x1 0x%llx)",
 -	    __builtin_ptrauth_strip(__builtin_return_address(0), 0), arg0, arg1);
-+	panic("fileset: original component called an unmapped kernel function from raw %p stripped %p (x0 0x%llx x1 0x%llx x8 0x%llx x16 0x%llx x17 0x%llx)",
-+	    (void *)r[5], __builtin_ptrauth_strip((void *)r[5], 0), r[0], r[1], r[2], r[3], r[4]);
++	return 0;
  }
