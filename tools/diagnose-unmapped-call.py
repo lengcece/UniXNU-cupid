@@ -216,14 +216,32 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--kernel", required=True, help="emitted kernel.macho from the panicking image")
     parser.add_argument("--kernelcache", required=True, help="pinned decompressed original kernelcache")
-    parser.add_argument("--pc", required=True, type=lambda value: int(value, 0),
+    parser.add_argument("--pc", type=lambda value: int(value, 0),
                         help="return address from the unixnu_fileset_unmapped panic")
+    parser.add_argument("--slot", type=lambda value: int(value, 0),
+                        help="GOT slot address (x16 for blraa, x8 for a shim braa)")
     args = parser.parse_args()
+    if (args.pc is None) == (args.slot is None):
+        parser.error("pass exactly one of --pc or --slot")
 
     emitted = MachO(read_bytes(args.kernel))
     original = MachO(read_bytes(args.kernelcache))
-    pc = args.pc
 
+    if args.slot is not None:
+        target, kind = original_target(original, args.slot)
+        if kind == "bind":
+            print(f"slot {args.slot:#x}: chained bind ordinal {target}; resolve it in the original kext")
+            return 0
+        emitted_value = emitted.read64(args.slot)
+        emitted_target = (emitted.base + (emitted_value & 0xFFFFFFFF)) & MASK64
+        print(f"slot:            {args.slot:#x}")
+        print(f"original callee: {target:#x}")
+        print(f"emitted slot:    {emitted_value:#x} -> {emitted_target:#x}"
+              + ("  (still the unmapped stub)" if emitted_target == find_stub(emitted) else ""))
+        report_target(original, target)
+        return 0
+
+    pc = args.pc
     component, segment = owner_of(emitted, pc)
     print(f"panic pc:        {pc:#x}")
     print(f"caller:          {component}/{segment}")
@@ -260,14 +278,24 @@ def main() -> int:
             return 0
         print(f"original callee: {target:#x}")
 
+    report_target(original, target)
+
+    resolved = emitted.read64(slot) if slot is not None else None
+    if resolved is not None:
+        resolved_target = (emitted.base + (resolved & 0xFFFFFFFF)) & MASK64
+        print(f"emitted slot:    {resolved:#x} -> {resolved_target:#x}"
+              + ("  (still the unmapped stub)" if resolved_target == find_stub(emitted) else ""))
+    return 0
+
+
+def report_target(original: MachO, target: int) -> None:
     owner, segment = owner_of(original, target)
     start, end = function_containing(MachO(original.data, original.entries[owner][1]), target)
     print(f"callee owner:    {owner}/{segment}")
     print(f"callee function: {start:#x}..{end:#x} ({end - start} bytes, pc+{target - start:#x})")
 
     image = MachO(original.data, original.entries[owner][1])
-    strings = image.strings_from(start, min(end, start + 0x300))
-    for text in strings:
+    for text in image.strings_from(start, min(end, start + 0x300)):
         print(f"  string:        {text}")
 
     try:
@@ -279,13 +307,6 @@ def main() -> int:
             print(f"  {instruction.address:#x}: {instruction.mnemonic:9s} {instruction.op_str}")
     except ImportError:
         print("  (install capstone for disassembly)")
-
-    resolved = emitted.read64(slot) if slot is not None else None
-    if resolved is not None:
-        resolved_target = (emitted.base + (resolved & 0xFFFFFFFF)) & MASK64
-        print(f"emitted slot:    {resolved:#x} -> {resolved_target:#x}"
-              + ("  (still the unmapped stub)" if resolved_target == find_stub(emitted) else ""))
-    return 0
 
 
 def find_stub(emitted: MachO) -> int | None:

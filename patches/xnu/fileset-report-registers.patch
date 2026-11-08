@@ -4,7 +4,7 @@
  }
  #endif /* __arm64__ */
  
-+void unixnu_fileset_unmapped_report(uint64_t *registers) __attribute__((noreturn));
++void unixnu_fileset_unmapped_report(uint64_t *registers) __attribute__((used, noreturn));
 +
  /*
   * Target of original kext calls into kernel functions this kernel does not have (fileset emission
