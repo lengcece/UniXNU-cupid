@@ -94,6 +94,48 @@
       "original_sha256": "c4d9c5197bc479af03299f2bfad6e1c52bff9caa00293d193ba4b47c17a90e78",
       "native_symbol": "_unixnu_apple_m2_property",
       "evidence": "AppleM2ScalerCSCDriver's last stubbed import: it zeroes the caller buffer (x1, size w2), looks up a string by the key in x0, and copies object+0x55c into the buffer. No 12377 function matched above 0.55 in the relocation-masked search. The device shim zeroes a valid buffer and returns NULL, the no-property path; the known call site ignores the return. Call-site registers in the panic had x1=0, so the shim also checks for NULL."
+    },
+    {
+      "original": "0xfffffff00abde90c",
+      "original_size": 308,
+      "original_sha256": "55e1b5e554730bab36213059f1bc00730d7fd682b6bf63a66b1f6774d4d47e78",
+      "native_symbol": "_unixnu_probe_image4_0",
+      "evidence": "Diagnostic probe: the post-AppleM2 fileset panic still names an unmapped target, and AppleImage4 has six stubbed imports. The target body is pinned by raw-byte sha256 and bound to a probe that panics with its address, so the next boot names the exact target. Replace the probe with a reviewed binding once identified."
+    },
+    {
+      "original": "0xfffffff00abdea40",
+      "original_size": 284,
+      "original_sha256": "5af2096f4fcf9199049a7b876853b33d34e8b8e26d65fe5f492646bb77b8aa73",
+      "native_symbol": "_unixnu_probe_image4_1",
+      "evidence": "Diagnostic probe: the post-AppleM2 fileset panic still names an unmapped target, and AppleImage4 has six stubbed imports. The target body is pinned by raw-byte sha256 and bound to a probe that panics with its address, so the next boot names the exact target. Replace the probe with a reviewed binding once identified."
+    },
+    {
+      "original": "0xfffffff00b0de25c",
+      "original_size": 28,
+      "original_sha256": "0985a276dd3d175ca7f44e704160ad3c76824a445657006e513ebfadab51ea08",
+      "native_symbol": "_unixnu_probe_image4_2",
+      "evidence": "Diagnostic probe: the post-AppleM2 fileset panic still names an unmapped target, and AppleImage4 has six stubbed imports. The target body is pinned by raw-byte sha256 and bound to a probe that panics with its address, so the next boot names the exact target. Replace the probe with a reviewed binding once identified."
+    },
+    {
+      "original": "0xfffffff00b0fca08",
+      "original_size": 128,
+      "original_sha256": "6a60420abb167cd0490c14ac86d48fd70d4112284df11dde1489d7b4921c0078",
+      "native_symbol": "_unixnu_probe_image4_3",
+      "evidence": "Diagnostic probe: the post-AppleM2 fileset panic still names an unmapped target, and AppleImage4 has six stubbed imports. The target body is pinned by raw-byte sha256 and bound to a probe that panics with its address, so the next boot names the exact target. Replace the probe with a reviewed binding once identified."
+    },
+    {
+      "original": "0xfffffff00b11a998",
+      "original_size": 240,
+      "original_sha256": "90190f8fcbcaa896941c7c087f2a781abe64571d39ca5dbdbef12cbba4ba42f3",
+      "native_symbol": "_unixnu_probe_image4_4",
+      "evidence": "Diagnostic probe: the post-AppleM2 fileset panic still names an unmapped target, and AppleImage4 has six stubbed imports. The target body is pinned by raw-byte sha256 and bound to a probe that panics with its address, so the next boot names the exact target. Replace the probe with a reviewed binding once identified."
+    },
+    {
+      "original": "0xfffffff00b4182c8",
+      "original_size": 16,
+      "original_sha256": "270e3f8691f72932d5b54c15ba75782fa0a900b4afe6ad4133552961da730434",
+      "native_symbol": "_unixnu_probe_image4_5",
+      "evidence": "Diagnostic probe: the post-AppleM2 fileset panic still names an unmapped target, and AppleImage4 has six stubbed imports. The target body is pinned by raw-byte sha256 and bound to a probe that panics with its address, so the next boot names the exact target. Replace the probe with a reviewed binding once identified."
     }
   ],
   "data": [],
