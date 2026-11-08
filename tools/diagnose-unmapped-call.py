@@ -310,6 +310,7 @@ def report_target(original: MachO, target: int) -> None:
 
 
 def find_stub(emitted: MachO) -> int | None:
+    """The prelink binds calls to the naked thunk that calls the report function."""
     at = emitted.data.find(UNMAPPED_STRING)
     if at < 0:
         return None
@@ -319,6 +320,7 @@ def find_stub(emitted: MachO) -> int | None:
             break
     else:
         return None
+    report = None
     for segment in emitted.segments:
         if segment["name"] != "__TEXT_EXEC":
             continue
@@ -335,8 +337,32 @@ def find_stub(emitted: MachO) -> int | None:
             if (page + ((second >> 10) & 0xFFF)) & MASK64 == string_va:
                 for back in range(pc, pc - 0x200, -4):
                     if emitted.read32(back) in (0xD503245F, 0xD503237F):  # bti c or pacibsp
-                        return back
-    return None
+                        report = back
+                        break
+            if report is not None:
+                break
+        if report is not None:
+            break
+    if report is None:
+        return None
+    # The device register-capture patch makes the stub a thunk that calls the
+    # report; the prelink binds the thunk, not the report.
+    for segment in emitted.segments:
+        if segment["name"] not in ("__TEXT_EXEC", "__TEXT_BOOT_EXEC"):
+            continue
+        for pc in range(segment["va"], segment["va"] + segment["filesize"], 4):
+            word = struct.unpack_from("<I", emitted.data, segment["fileoff"] + pc - segment["va"])[0]
+            if word & 0xFC000000 != 0x94000000:
+                continue
+            immediate = word & 0x3FFFFFF
+            if immediate & (1 << 25):
+                immediate -= 1 << 26
+            if (pc + immediate * 4) & MASK64 != report:
+                continue
+            for back in range(pc, pc - 0x80, -4):
+                if emitted.read32(back) in (0xD503245F, 0xD503237F):
+                    return back
+    return report
 
 
 if __name__ == "__main__":
