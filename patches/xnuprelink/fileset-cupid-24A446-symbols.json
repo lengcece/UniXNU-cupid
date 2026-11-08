@@ -66,6 +66,13 @@
       "original_sha256": "20c324668badde1549c3c0d4f13a8f41889f9b131912cc825eb894d90b60a9f2",
       "native_symbol": "___strcat_chk",
       "evidence": "Panic string '__strcat_chk object size check failed: dst %p, src %p, (%zu < %zu)' at 0xfffffff007060885, referenced from 0xfffffff00ad05e6c. Source: osfmk/device/subrs.c __strcat_chk."
+    },
+    {
+      "original": "0xfffffff00ab86b04",
+      "original_size": 12,
+      "original_sha256": "d81a6809f44fa6dc4b5926986d74ff6c7aeec7cd278ab31bae93d2b5b4d2a2da",
+      "native_symbol": "_ml_get_hwclock",
+      "evidence": "Twelve-byte leaf body is 'bti c; mrs x0, S3_4_C15_C10_6; ret'. S3_4_C15_C10_6 is KERNEL_CNTVCTSS_EL0 (osfmk/arm64/machine_routines.c:2457), the non-speculative virtual counter, so the original symbol is ml_get_hwclock. AppleM2ScalerCSCDriver imports it through GOT slot 0xfffffff0080b55f8; the next boot panicked from AppleM2's start path with a stale x30 in its __DATA and an uninitialised x0, matching a no-argument counter read. Native ml_get_hwclock returns the same virtual timebase (isb + CNTVCT_EL0), so the binding is semantically equivalent; it also avoids the Apple CNTVCTSS alias, which Gunyah need not implement."
     }
   ],
   "data": [],
