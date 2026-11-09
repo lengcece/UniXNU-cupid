@@ -136,6 +136,48 @@
       "original_sha256": "270e3f8691f72932d5b54c15ba75782fa0a900b4afe6ad4133552961da730434",
       "native_symbol": "_unixnu_probe_image4_5",
       "evidence": "Diagnostic probe: the post-AppleM2 fileset panic still names an unmapped target, and AppleImage4 has six stubbed imports. The target body is pinned by raw-byte sha256 and bound to a probe that panics with its address, so the next boot names the exact target. Replace the probe with a reviewed binding once identified."
+    },
+    {
+      "original": "0xfffffff00abde624",
+      "original_size": 28,
+      "original_sha256": "1f866e13d5bb144c14941577a665234299a990b4f73bf0a99668ba3f2de676aa",
+      "native_symbol": "_lck_mtx_gate_init",
+      "evidence": "AppleImage4's lck_mtx_gate family. The XnuPrelink map paired this exact original body to the named native _lck_mtx_gate_* symbol in run 42481732673; the probe/fixture changes made the current matcher leave it unmatched. Bind the body by raw-byte hash to the same-source native gate implementation."
+    },
+    {
+      "original": "0xfffffff00abde640",
+      "original_size": 56,
+      "original_sha256": "27da6292b2dc607aa5ddfb13749aaa61c7119b7a09558c22dc2cd83c57dfe869",
+      "native_symbol": "_lck_mtx_gate_alloc_init",
+      "evidence": "AppleImage4's lck_mtx_gate family. The XnuPrelink map paired this exact original body to the named native _lck_mtx_gate_* symbol in run 42481732673; the probe/fixture changes made the current matcher leave it unmatched. Bind the body by raw-byte hash to the same-source native gate implementation."
+    },
+    {
+      "original": "0xfffffff00abdeb5c",
+      "original_size": 12,
+      "original_sha256": "7a6e19c0a1c733f7f867d31e962d8f3f2e21ef8a9e9e005fb467c251d1eb12fd",
+      "native_symbol": "_lck_mtx_gate_open",
+      "evidence": "AppleImage4's lck_mtx_gate family. The XnuPrelink map paired this exact original body to the named native _lck_mtx_gate_* symbol in run 42481732673; the probe/fixture changes made the current matcher leave it unmatched. Bind the body by raw-byte hash to the same-source native gate implementation."
+    },
+    {
+      "original": "0xfffffff00abdeb68",
+      "original_size": 16,
+      "original_sha256": "537977ff857707874ccfb2b302266d5a11cd0ea68723f986f009f495b1ba872b",
+      "native_symbol": "_lck_mtx_gate_handoff",
+      "evidence": "AppleImage4's lck_mtx_gate family. The XnuPrelink map paired this exact original body to the named native _lck_mtx_gate_* symbol in run 42481732673; the probe/fixture changes made the current matcher leave it unmatched. Bind the body by raw-byte hash to the same-source native gate implementation."
+    },
+    {
+      "original": "0xfffffff00abdeb78",
+      "original_size": 12,
+      "original_sha256": "58da13a6911110ea740bff1c5aba0abdd70ee92c705568c03685d35cbacf8c18",
+      "native_symbol": "_lck_mtx_gate_steal",
+      "evidence": "AppleImage4's lck_mtx_gate family. The XnuPrelink map paired this exact original body to the named native _lck_mtx_gate_* symbol in run 42481732673; the probe/fixture changes made the current matcher leave it unmatched. Bind the body by raw-byte hash to the same-source native gate implementation."
+    },
+    {
+      "original": "0xfffffff00abdeb84",
+      "original_size": 712,
+      "original_sha256": "5090907b66c476e49c8f73d4cfe15de1b9056fa056e72ccb5295ead4d685603e",
+      "native_symbol": "_lck_mtx_gate_wait",
+      "evidence": "AppleImage4's lck_mtx_gate family. The XnuPrelink map paired this exact original body to the named native _lck_mtx_gate_* symbol in run 42481732673; the probe/fixture changes made the current matcher leave it unmatched. Bind the body by raw-byte hash to the same-source native gate implementation."
     }
   ],
   "data": [],
