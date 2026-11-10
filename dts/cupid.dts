@@ -37,14 +37,31 @@
 
 // cpu0-3 Cortex-A510 (E); cpu4-6 Cortex-A710 and cpu7 Cortex-X2 (P).
 // MPIDR Affinity1 0x000-0x700, matching mainline sm8450.dtsi.
-&cpu0 { unixnu,cluster-type = "E"; };
-&cpu1 { unixnu,cluster-type = "E"; };
-&cpu2 { unixnu,cluster-type = "E"; };
-&cpu3 { unixnu,cluster-type = "E"; };
-&cpu4 { unixnu,cluster-type = "P"; };
-&cpu5 { unixnu,cluster-type = "P"; };
-&cpu6 { unixnu,cluster-type = "P"; };
-&cpu7 { unixnu,cluster-type = "P"; };
+//
+// AppleARMCPU::_validateConfiguration() reads the ADT, and the ADT handed to XNU
+// is generated from *this* tree (device:dts/cupid.dts + soc:dts/sm8450.dtsi),
+// not from build/cupid/cupid.dtb — that one only feeds the boot.img FDT. Without
+// Apple's CPU property contract the kernel panics with
+// "CPU configuration in device tree is invalid" at AppleARMCPU.cpp:111:
+//
+//   /cpus      max_cpus (4 bytes, non-zero) >= the number of cpu children
+//   each cpu   cpu-id (4 bytes) == interrupts[0]; interrupts[2] == cpu-id + 1
+//              function-ipi_dispatch (3 cells) == interrupts
+//
+// sm8450.dtsi gives each cpu only a 2-cell `reg` (8 bytes, a length Apple
+// rejects), so cpu-id has to be supplied explicitly.
+&{/cpus} {
+    max_cpus = <8>;
+};
+
+&cpu0 { unixnu,cluster-type = "E"; cpu-id = <0>; interrupts = <0 0 1>; function-ipi_dispatch = <0 0 1>; };
+&cpu1 { unixnu,cluster-type = "E"; cpu-id = <1>; interrupts = <1 0 2>; function-ipi_dispatch = <1 0 2>; };
+&cpu2 { unixnu,cluster-type = "E"; cpu-id = <2>; interrupts = <2 0 3>; function-ipi_dispatch = <2 0 3>; };
+&cpu3 { unixnu,cluster-type = "E"; cpu-id = <3>; interrupts = <3 0 4>; function-ipi_dispatch = <3 0 4>; };
+&cpu4 { unixnu,cluster-type = "P"; cpu-id = <4>; interrupts = <4 0 5>; function-ipi_dispatch = <4 0 5>; };
+&cpu5 { unixnu,cluster-type = "P"; cpu-id = <5>; interrupts = <5 0 6>; function-ipi_dispatch = <5 0 6>; };
+&cpu6 { unixnu,cluster-type = "P"; cpu-id = <6>; interrupts = <6 0 7>; function-ipi_dispatch = <6 0 7>; };
+&cpu7 { unixnu,cluster-type = "P"; cpu-id = <7>; interrupts = <7 0 8>; function-ipi_dispatch = <7 0 8>; };
 
 // No storage, GPU or input component is selected for stage 0, so the nodes
 // stay disabled. Enabling them without a matching driver only publishes
