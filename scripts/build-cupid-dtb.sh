@@ -218,8 +218,12 @@ for i in range(ob, len(text)):
         continue
     if ch in "{}":
         if ch == "{" and depth == 1:
-            name = text[line_start:i].strip().split()[0] if text[line_start:i].strip() else ""
-            name = name.rstrip("{").strip()
+            pre = text[line_start:i].strip().rstrip("{").strip()
+            toks = pre.split()
+            # dtc emits "CPU0: cpu@0 {" : the label comes before the node name.
+            name = toks[-1] if toks else ""
+            if name.endswith(":") and len(toks) > 1:
+                name = toks[-2]
             if name:
                 kids.append(name)
         depth += 1 if ch == "{" else -1
