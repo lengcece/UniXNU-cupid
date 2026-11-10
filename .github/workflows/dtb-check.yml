@@ -1,0 +1,66 @@
+name: cupid dtb check
+
+# Validates scripts/build-cupid-dtb.sh only, on a Linux runner.
+# The dtb build needs nothing from the macOS host: it clones the LineageOS
+# devicetrees + kernel headers itself and only needs dtc / fdtoverlay / fdtput
+# and a C preprocessor, all of which exist in the Ubuntu image.
+# This exists so the adt /cpus fixup and its assertion can be verified without
+# waiting for a contended macos-26 arm64 runner.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/build-cupid-dtb.sh"
+      - ".github/workflows/dtb-check.yml"
+
+jobs:
+  dtb:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the device repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y device-tree-compiler clang
+
+      - name: Report the toolchain
+        run: |
+          uname -m
+          clang --version | head -1
+          dtc --version
+          for tool in clang dtc fdtoverlay fdtput git python3; do
+            printf '%-10s %s\n' "$tool" "$(command -v "$tool" || echo MISSING)"
+          done
+
+      - name: Build the cupid device tree
+        id: dtb
+        run: scripts/build-cupid-dtb.sh
+
+      - name: Mirror the diagnostics into the job summary
+        if: always()
+        run: |
+          DIAG="$RUNNER_TEMP/kernel-diag.txt"
+          if [ -f "$DIAG" ]; then
+            {
+              echo '```'
+              tail -n 40 "$DIAG"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload the device tree and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cupid-dtb
+          path: |
+            build/cupid/cupid.dtb
+            ${{ runner.temp }}/kernel-diag.txt
+          if-no-files-found: warn
