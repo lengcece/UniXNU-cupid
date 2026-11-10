@@ -15,6 +15,13 @@
 #   UNIXNU_KERNEL_INCLUDE_DIR   kernel include/ checkout
 #   CPP                         preprocessor command (default: cpp, else clang -E)
 set -euo pipefail
+
+# Mirror this step's output into the diagnostics file the workflow uploads
+# (kernel-diag.txt), so a failure here is readable from the artifact.
+DIAG=${RUNNER_TEMP:-/tmp}/kernel-diag.txt
+mkdir -p "$(dirname "$DIAG")"
+exec > >(tee -a "$DIAG") 2>&1
+
 DEVICE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 CACHE=${UNIXNU_DTB_CACHE:-$DEVICE/.cache}
 DTS=${UNIXNU_CUPID_DTS_DIR:-$CACHE/dts-xiaomi-sm8450}
@@ -111,7 +118,8 @@ echo "== adt /cpus fixup"
 #   cpu-id == interrupts[0],  interrupts[2] == interrupts[0] + 1,
 #   function-ipi_dispatch of 3 cells consistent with interrupts.
 # So drop cpu-map and give every CPU node the three Apple-shaped properties.
-dtc -I dtb -O dts "$OUT/cupid.dtb" > "$WORK/cupid-fixup.dts" 2>/dev/null
+dtc -I dtb -O dts "$OUT/cupid.dtb" > "$WORK/cupid-fixup.dts"
+echo "== fixup: cupid-fixup.dts $(wc -l < "$WORK/cupid-fixup.dts") lines"
 python3 - "$WORK/cupid-fixup.dts" "$WORK/cupid-fixup-out.dts" <<'PY'
 import re, sys
 
@@ -187,10 +195,10 @@ else:
 open(dst, "w", encoding="utf-8", errors="surrogateescape").write(text[:ob + 1] + body + text[cb:])
 print("adt /cpus: %d cpus, cpu-map+idle-states dropped, max_cpus=%d" % (count, count))
 PY
-dtc -I dts -O dtb -o "$OUT/cupid.dtb" "$WORK/cupid-fixup-out.dts" 2>/dev/null
+dtc -I dts -O dtb -o "$OUT/cupid.dtb" "$WORK/cupid-fixup-out.dts"
 
 # Assert the fixup really landed and /cpus holds nothing but cpu@N children.
-dtc -I dtb -O dts "$OUT/cupid.dtb" > "$WORK/cupid-fixed.dts" 2>/dev/null
+dtc -I dtb -O dts "$OUT/cupid.dtb" > "$WORK/cupid-fixed.dts"
 grep -q 'max_cpus' "$WORK/cupid-fixed.dts" \
   || { echo "adt /cpus fixup did not stick" >&2; exit 1; }
 python3 - "$WORK/cupid-fixed.dts" <<'PY2'
