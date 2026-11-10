@@ -219,6 +219,7 @@ for i in range(ob, len(text)):
     if ch in "{}":
         if ch == "{" and depth == 1:
             pre = text[line_start:i].strip().rstrip("{").strip()
+            # dtc may prefix a label ("CPU0: cpu@0"); the node name is the last token.
             toks = pre.split()
             # dtc emits "CPU0: cpu@0 {" : the label comes before the node name.
             name = toks[-1] if toks else ""
