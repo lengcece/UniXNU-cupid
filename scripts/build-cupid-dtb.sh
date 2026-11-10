@@ -203,26 +203,34 @@ grep -q 'max_cpus' "$WORK/cupid-fixed.dts" \
   || { echo "adt /cpus fixup did not stick" >&2; exit 1; }
 python3 - "$WORK/cupid-fixed.dts" <<'PY2'
 import re, sys
+# Brace-depth scan: indentation in dtc output is not a stable signal.
 text = open(sys.argv[1], encoding="utf-8", errors="surrogateescape").read()
 m = re.search(r"\n([ \t]*)cpus\s*\{", text)
-depth = 0
-body = None
+assert m, "no /cpus node in fixed dts"
 ob = text.index("{", m.start())
+kids = []
+depth = 0
+line_start = ob
 for i in range(ob, len(text)):
-    if text[i] == "{":
-        depth += 1
-    elif text[i] == "}":
-        depth -= 1
-        if depth == 0:
-            body = text[ob + 1:i]
+    ch = text[i]
+    if ch == "\n":
+        line_start = i + 1
+        continue
+    if ch in "{}":
+        if ch == "{" and depth == 1:
+            name = text[line_start:i].strip().split()[0] if text[line_start:i].strip() else ""
+            name = name.rstrip("{").strip()
+            if name:
+                kids.append(name)
+        depth += 1 if ch == "{" else -1
+        if depth <= 0:
             break
-kids = re.findall(r"\n\t\t([A-Za-z0-9,_@\-]+)\s*\{", body)
 cpus = [k for k in kids if k.startswith("cpu@")]
 extra = [k for k in kids if not k.startswith("cpu@")]
 print("adt /cpus children: %d (%s)%s" % (
     len(kids), ",".join(sorted(kids)),
     "" if not extra else "  FOREIGN: " + ",".join(extra)))
-assert len(cpus) == 8, "expected 8 cpu@ nodes, got %d" % len(cpus)
+assert len(cpus) == 8, "expected 8 cpu@ nodes, got %d (%s)" % (len(cpus), ",".join(sorted(kids)))
 assert not extra, "/cpus still has non-CPU children: %s" % extra
 PY2
 
