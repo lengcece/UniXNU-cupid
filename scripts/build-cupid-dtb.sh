@@ -104,6 +104,83 @@ fdtput -t x "$OUT/cupid.dtb" / qcom,pmic-id 0x2f 0x0 0x0 0x0 0x0 0x0 0x0 0x0
 fdtput -t x "$OUT/cupid.dtb" / qcom,pmic-id-size 0x8
 fdtput -t x "$OUT/cupid.dtb" / xiaomi,miboard-id 0x2 0x0
 
+echo "== adt /cpus fixup"
+# AppleARMCPU::_validateConfiguration() (recovered from the 24A446 payload) rejects
+# the Qualcomm /cpus layout: it counts every child of /cpus (cpu-map included),
+# reads a 4-byte cpu-id (falling back to reg, which here is 2 cells), and requires
+#   cpu-id == interrupts[0],  interrupts[2] == interrupts[0] + 1,
+#   function-ipi_dispatch of 3 cells consistent with interrupts.
+# So drop cpu-map and give every CPU node the three Apple-shaped properties.
+dtc -I dtb -O dts "$OUT/cupid.dtb" > "$WORK/cupid-fixup.dts" 2>/dev/null
+python3 - "$WORK/cupid-fixup.dts" "$WORK/cupid-fixup-out.dts" <<'PY'
+import re, sys
+
+src, dst = sys.argv[1], sys.argv[2]
+
+
+def block_end(text, open_idx):
+    depth = 0
+    for i in range(open_idx, len(text)):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return i
+    raise SystemExit("unbalanced braces")
+
+
+text = open(src, encoding="utf-8", errors="surrogateescape").read()
+m = re.search(r"\n([ \t]*)cpus\s*\{", text)
+if not m:
+    raise SystemExit("no /cpus node found in cupid.dtb")
+indent = m.group(1)
+ob = text.index("{", m.start())
+cb = block_end(text, ob)
+body = text[ob + 1:cb]
+
+# cpu-map is a topology hint XNU never reads, but AppleARMCPU counts it as a CPU.
+cm = re.search(r"\n\s*cpu-map\s*\{", body)
+if cm:
+    cm_open = body.index("{", cm.start())
+    cm_close = block_end(body, cm_open)
+    semi = body.find(";", cm_close)
+    body = body[:cm.start()] + body[semi + 1:]
+
+nodes = list(re.finditer(r"cpu@([0-9a-fA-F]+)\s*\{", body))
+count = len(nodes)
+reg_re = re.compile(r"reg\s*=\s*<([^>]*)>;")
+
+for idx in range(len(nodes) - 1, -1, -1):
+    nm = nodes[idx]
+    node_open = body.index("{", nm.start())
+    node_close = block_end(body, node_open)
+    node_span = body[node_open:node_close]
+    mreg = reg_re.search(node_span)
+    cpu_id = idx
+    if mreg:
+        cells = [int(x, 0) for x in mreg.group(1).replace(",", " ").split()]
+        if cells and cells[-1] % 0x100 == 0 and cells[-1] // 0x100 < 64:
+            cpu_id = cells[-1] // 0x100
+    inner = body[node_open + 1:node_close]
+    if "cpu-id = <" in inner:
+        continue
+    ins = "\n{n1}cpu-id = <{i}>;\n{n1}interrupts = <{i} 0 {p}>;\n{n1}function-ipi_dispatch = <{i} 0 {p}>;".format(
+        n1=indent + "\t\t", i=cpu_id, p=cpu_id + 1)
+    body = body[:node_open + 1] + ins + inner + body[node_close:]
+
+if "max_cpus =" in body:
+    body = re.sub(r"max_cpus\s*=\s*<[^>]*>\s*;", "max_cpus = <%d>;" % count, body, count=1)
+else:
+    body = "\n" + indent + "\tmax_cpus = <%d>;\n" % count + body.lstrip("\n")
+
+open(dst, "w", encoding="utf-8", errors="surrogateescape").write(text[:ob + 1] + body + text[cb:])
+print("adt /cpus: %d cpus, cpu-map dropped, max_cpus=%d" % (count, count))
+PY
+dtc -I dts -O dtb -o "$OUT/cupid.dtb" "$WORK/cupid-fixup-out.dts" 2>/dev/null
+grep -q 'max_cpus' <(dtc -I dtb -O dts "$OUT/cupid.dtb" 2>/dev/null) \
+  || { echo "adt /cpus fixup did not stick" >&2; exit 1; }
+
 echo "== verify"
 dtc -I dtb -O dts "$OUT/cupid.dtb" > "$WORK/cupid.dts" 2>/dev/null
 for needle in cs35l41 fts@0; do
