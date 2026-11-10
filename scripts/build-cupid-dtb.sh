@@ -139,13 +139,23 @@ ob = text.index("{", m.start())
 cb = block_end(text, ob)
 body = text[ob + 1:cb]
 
-# cpu-map is a topology hint XNU never reads, but AppleARMCPU counts it as a CPU.
-cm = re.search(r"\n\s*cpu-map\s*\{", body)
-if cm:
-    cm_open = body.index("{", cm.start())
-    cm_close = block_end(body, cm_open)
-    semi = body.find(";", cm_close)
-    body = body[:cm.start()] + body[semi + 1:]
+def drop_child(name):
+    """Remove a direct child node by name (AppleARMCPU counts every child of /cpus)."""
+    global body
+    while True:
+        m = re.search(r"\n([ \t]*)" + name + r"\s*\{", body)
+        if not m:
+            return False
+        ob2 = body.index("{", m.start())
+        cb2 = block_end(body, ob2)
+        semi = body.find(";", cb2)
+        body = body[:m.start()] + body[semi + 1:]
+
+
+# cpu-map and idle-states are topology/power hints XNU never reads from here,
+# but AppleARMCPU counts every child of /cpus as a CPU (mCPUCount would become 9).
+drop_child("cpu-map")
+drop_child("idle-states")
 
 nodes = list(re.finditer(r"cpu@([0-9a-fA-F]+)\s*\{", body))
 count = len(nodes)
@@ -175,11 +185,38 @@ else:
     body = "\n" + indent + "\tmax_cpus = <%d>;\n" % count + body.lstrip("\n")
 
 open(dst, "w", encoding="utf-8", errors="surrogateescape").write(text[:ob + 1] + body + text[cb:])
-print("adt /cpus: %d cpus, cpu-map dropped, max_cpus=%d" % (count, count))
+print("adt /cpus: %d cpus, cpu-map+idle-states dropped, max_cpus=%d" % (count, count))
 PY
 dtc -I dts -O dtb -o "$OUT/cupid.dtb" "$WORK/cupid-fixup-out.dts" 2>/dev/null
-grep -q 'max_cpus' <(dtc -I dtb -O dts "$OUT/cupid.dtb" 2>/dev/null) \
+
+# Assert the fixup really landed and /cpus holds nothing but cpu@N children.
+dtc -I dtb -O dts "$OUT/cupid.dtb" > "$WORK/cupid-fixed.dts" 2>/dev/null
+grep -q 'max_cpus' "$WORK/cupid-fixed.dts" \
   || { echo "adt /cpus fixup did not stick" >&2; exit 1; }
+python3 - "$WORK/cupid-fixed.dts" <<'PY2'
+import re, sys
+text = open(sys.argv[1], encoding="utf-8", errors="surrogateescape").read()
+m = re.search(r"\n([ \t]*)cpus\s*\{", text)
+depth = 0
+body = None
+ob = text.index("{", m.start())
+for i in range(ob, len(text)):
+    if text[i] == "{":
+        depth += 1
+    elif text[i] == "}":
+        depth -= 1
+        if depth == 0:
+            body = text[ob + 1:i]
+            break
+kids = re.findall(r"\n\t\t([A-Za-z0-9,_@\-]+)\s*\{", body)
+cpus = [k for k in kids if k.startswith("cpu@")]
+extra = [k for k in kids if not k.startswith("cpu@")]
+print("adt /cpus children: %d (%s)%s" % (
+    len(kids), ",".join(sorted(kids)),
+    "" if not extra else "  FOREIGN: " + ",".join(extra)))
+assert len(cpus) == 8, "expected 8 cpu@ nodes, got %d" % len(cpus)
+assert not extra, "/cpus still has non-CPU children: %s" % extra
+PY2
 
 echo "== verify"
 dtc -I dtb -O dts "$OUT/cupid.dtb" > "$WORK/cupid.dts" 2>/dev/null
