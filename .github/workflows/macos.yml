@@ -73,7 +73,7 @@ jobs:
             Common/Mu Common/Mu_OEM_Sample Mu_Basecore Silicium-ACPI \
             Silicon/Silicium/OpensslPkg/Library/OpensslLib/openssl
 
-      - name: Repair the stale ArmCpu gitlink
+      - name: Repair the stale submodule gitlinks
         working-directory: UniXNU
         run: |
           # UniXNU main pins drivers/ArmCpu at 2e11cda72740b985dedde3e32ba72b0fd64eb475.
@@ -82,6 +82,17 @@ jobs:
           # Pin the index to the existing ArmCpu main commit for this build.
           git update-index --cacheinfo 160000,93a5030c5d983d0ef90f0fca93879d6e36ad1ba8,drivers/ArmCpu
           git ls-tree HEAD drivers/ArmCpu
+
+          # Same class of problem, different submodule: drivers/AppleKeyStoreState is
+          # pinned at 6ff4f11d8fdf853351f8d98e1bbe1373fb8da2e6, which that repository
+          # also rebased away ("upload-pack: not our ref"). Re-pin it to whatever that
+          # repository currently publishes, so the next rebase cannot break the build.
+          aks_url=$(git config -f .gitmodules --get submodule.drivers/AppleKeyStoreState.url)
+          aks_head=$(git ls-remote "$aks_url" HEAD | cut -f1)
+          [ -n "$aks_head" ] || { echo "cannot resolve $aks_url" >&2; exit 1; }
+          echo "AppleKeyStoreState: $aks_url @ $aks_head"
+          git update-index --cacheinfo "160000,$aks_head,drivers/AppleKeyStoreState"
+          git ls-tree HEAD drivers/AppleKeyStoreState
 
       - name: Apply device-side UniXNU fixes
         working-directory: UniXNU
