@@ -37,10 +37,9 @@ defaults:
 
 jobs:
   kernel:
-    runs-on: macos-26
+    runs-on: macos-15
     timeout-minutes: 360
     env:
-      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
       UNIXNU_DEVICE: ${{ github.workspace }}/device
       # prepare-xnu-source.py lists Apple sources through the GitHub API.
       GITHUB_TOKEN: ${{ github.token }}
@@ -107,6 +106,28 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Select the Xcode toolchain
+        id: xcode
+        run: |
+          # macos-26 arm64 runners are chronically short of capacity, so every
+          # attempt was killed after 15 minutes in the queue with 0 steps run.
+          # Build on macos-15 instead and pick the newest Xcode the image ships
+          # rather than hard-wiring /Applications/Xcode_26.6.app.
+          candidates=""
+          for app in /Applications/Xcode_26.6.app /Applications/Xcode_26*.app /Applications/Xcode_2*.app; do
+            [ -d "$app" ] && candidates="$candidates$app\n"
+          done
+          newest=$(printf "%b" "$candidates" | grep -v '^$' | sort -V | tail -1)
+          if [ -z "$newest" ]; then
+            echo "::error::no Xcode installation found under /Applications"
+            ls -d /Applications/Xcode*.app 2>/dev/null || true
+            exit 1
+          fi
+          echo "selected: $newest"
+          echo "DEVELOPER_DIR=$newest/Contents/Developer" >> "$GITHUB_ENV"
+          sudo xcode-select -s "$newest" || true
+          echo "developer_dir=$newest/Contents/Developer" >> "$GITHUB_OUTPUT"
+
       - name: Install host tools
         run: |
           brew install llvm lld mtools dtc
@@ -119,8 +140,14 @@ jobs:
         run: |
           sw_vers
           uname -m
+          echo "DEVELOPER_DIR=$DEVELOPER_DIR"
           xcodebuild -version
-          xcrun --sdk iphoneos --show-sdk-version
+          sdk=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "iphoneos SDK: $sdk"
+          case "$sdk" in
+            2[6-9].*|[3-9][0-9].*) ;;
+            *) echo "::warning::iphoneos SDK $sdk is older than the iOS 27 SDK the profile targets; the kernel build may fail on SDK-only headers" ;;
+          esac
           python3 --version
           for tool in git make clang cmake ninja unifdef ld.lld mformat mcopy dtc fdtoverlay xcodebuild; do
             printf '%-10s %s\n' "$tool" "$(command -v "$tool" || echo MISSING)"
