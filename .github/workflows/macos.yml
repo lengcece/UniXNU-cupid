@@ -7,6 +7,11 @@ name: macOS kernel build
 
 on:
   workflow_dispatch:
+    inputs:
+      runs_on:
+        description: "Runner label; empty means macos-15-arm64"
+        required: false
+        default: ""
   push:
     branches: [main]
     paths:
@@ -38,7 +43,7 @@ defaults:
 
 jobs:
   kernel:
-    runs-on: macos-15-arm64
+    runs-on: ${{ inputs.runs_on != '' && inputs.runs_on || 'macos-15-arm64' }}
     timeout-minutes: 360
     env:
       UNIXNU_DEVICE: ${{ github.workspace }}/device
