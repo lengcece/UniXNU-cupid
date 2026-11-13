@@ -94,7 +94,7 @@ jobs:
             ./unixnu defconfig cupid_ios27_defconfig -D ../device
             ./unixnu fetch -D ../device
             ./unixnu status --json -D ../device | tee ~/status.json
-            python3 - ~/status.json <<'PY'
+            python3 - ~/status.json \<<'PY'
             import json, sys
             status = json.load(open(sys.argv[1]))
             text = json.dumps(status)
