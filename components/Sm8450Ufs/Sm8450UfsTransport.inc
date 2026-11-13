@@ -334,13 +334,15 @@ extern "C" int native_cupid_ufs_volume_device(const char *uuid, int kind,
   OSIterator *iterator = nullptr;
   if (ready && kind) {
     IOLog("CUPID APFS: wait for %s UUID %.36s, timeout=5s\n", windowName,uuid);
-    auto published = IOService::waitForMatchingService(matching, 5ULL * 1000000000ULL);
+    IOService *published =
+        IOService::waitForMatchingService(matching, 5ULL * 1000000000ULL);
     if (published) {
       IOLog("CUPID APFS: %s UUID appeared; rechecking IOMedia\n",windowName);
       iterator = IOService::getMatchingServices(matching);
     } else {
       IOLog("CUPID APFS: %s UUID wait timed out\n",windowName);
     }
+    if (published) published->release();
   } else if (ready) {
     iterator = IOService::getMatchingServices(matching);
   }
