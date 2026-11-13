@@ -24,7 +24,7 @@ lba_bytes = 4096
 [components]
 # Stage 0. ArmDTPlatform, ArmCpu and XnuPrelink also come from the arm64e arch
 # profile; they are repeated here because arrays replace inherited arrays.
-include = ["ArmDTPlatform", "ArmCpu", "XnuPrelink", "DarwinBoot"]
+include = ["ArmDTPlatform", "ArmCpu", "XnuPrelink", "DarwinBoot", "Sm8450Ufs"]
 
 [kernel]
 defconfig = "cupid_ios27_defconfig"
@@ -33,6 +33,7 @@ archives = [
   "build-corecrypto-14.py --namespace",
   "component:ArmDTPlatform",
   "component:ArmCpu",
+  "component:Sm8450Ufs",
   "build-libpthread-kernel.py",
   "build-fileset-release-reference.py --tree . --lto",
 ]

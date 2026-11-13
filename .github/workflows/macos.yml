@@ -93,6 +93,13 @@ jobs:
           git update-index --cacheinfo "160000,$aks_head,drivers/AppleKeyStoreState"
           git ls-tree HEAD drivers/AppleKeyStoreState
 
+      - name: Stage the board storage component
+        working-directory: UniXNU
+        run: |
+          mkdir -p drivers/Sm8450Ufs
+          cp ../device/components/Sm8450Ufs/* drivers/Sm8450Ufs/
+          ls -la drivers/Sm8450Ufs
+
       - name: Apply device-side UniXNU fixes
         working-directory: UniXNU
         run: |

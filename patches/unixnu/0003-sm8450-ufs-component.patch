@@ -1,0 +1,41 @@
+diff --git a/components.toml b/components.toml
+index 8e9fb7d..c6a8021 100644
+--- a/components.toml
++++ b/components.toml
+@@ -570,3 +570,23 @@ runtime_identifiers = ["AppleBaseband", "AppleBasebandPCIControl", "AppleBaseban
+ build_stage = "kernel"
+ build = ["build-qcom-baseband.py"]
+ outputs = ["build/qcom-baseband/libQcomBaseband.a"]
++
++[[component]]
++id = "Sm8450Ufs"
++kind = "driver"
++function = "SM8450 UFS transport and cupid SHNGROOT storage"
++scope = "board"
++repository = "https://github.com/lengcece/UniXNU-cupid.git"
++revision = "991c8d1cbe49e2422a3ebf12f410470a5e0a31a4"
++# The CI stages components/Sm8450Ufs here before the kernel build; a local
++# directory wins over the git source in resolve(), so no clone happens.
++path = "drivers/Sm8450Ufs"
++hardware = ["SM8450 UFS controller, apps SMMU, GCC UFS branches"]
++os_abi = ["ios-27.0.1-24A446"]
++board_dependencies = ["cupid userdata GPT window", "bootloader-initialised UFS"]
++verified_devices = []
++source_files = ["Sm8450Ufs.cpp", "Sm8450UfsTransport.inc", "CupidProbe.h"]
++runtime_identifiers = ["NativeUfs", "Sm8450Ufs.cpp", "cupid_ufs_transport_start"]
++build_stage = "kernel"
++build = ["build-arm-driver.py", "Sm8450Ufs"]
++outputs = ["build/sm8450-ufs/libSm8450Ufs.a"]
+diff --git a/scripts/build-arm-driver.py b/scripts/build-arm-driver.py
+index b027a9b..270b2d2 100644
+--- a/scripts/build-arm-driver.py
++++ b/scripts/build-arm-driver.py
+@@ -85,7 +85,7 @@ while index < len(arguments):
+ command.extend(['-Wall', '-Wextra', '-Werror', '-Wno-unused-parameter',
+                 '-Wno-c99-designator', '-Wno-reorder-init-list', '-Wno-deprecated-enum-enum-conversion',
+                 '-Wno-unnecessary-virtual-specifier', '-I', str(ROOT / '.cache/xnu-work/osfmk')])
+-if component in ('NativeVirtioBlock', 'NativeRamBlock', 'NativeUfs'):
++if component in ('NativeVirtioBlock', 'NativeRamBlock', 'NativeUfs', 'Sm8450Ufs'):
+     command += ['-I', str(ROOT / 'build/storage-abi/include')]
+     if args.verified_root:
+         command += ['-I', str(ROOT / 'kits/VerifiedRoot/include'), '-DNATIVE_VERIFIED_BLOCK=1']

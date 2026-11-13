@@ -66,3 +66,20 @@
 // No storage, GPU or input component is selected for stage 0, so the nodes
 // stay disabled. Enabling them without a matching driver only publishes
 // resources no kext will claim.
+
+// UFS bring-up. Every number is a board fact, not a copy from SM8550:
+// upstream qcom/waipio (sm8450.dtsi) gives hc 0x1d84000 size 0x3000, SPI 265,
+// apps_smmu 0x15000000 size 0x100000 and iommus = <&apps_smmu 0xe0 0x0>;
+// gcc-sm8450.c puts every UFS branch in the 0x87000 window of GCC (0x187000).
+// The transport takes over the controller the bootloader already started, so
+// the QMP PHY (0x1d87000) is not driven from here yet.
+&ufs {
+    status = "okay";
+    cupid,ufs-hc-base = /bits/ 64 <0x1d84000>;
+    cupid,ufs-hc-size = /bits/ 64 <0x3000>;
+    cupid,gcc-ufs-page = /bits/ 64 <0x187000>;
+    cupid,smmu-base = /bits/ 64 <0x15000000>;
+    cupid,smmu-size = /bits/ 64 <0x100000>;
+    cupid,smmu-stream-id = <0xe0>;
+    cupid,ufs-spi = <265>;
+};
