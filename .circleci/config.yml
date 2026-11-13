@@ -1,0 +1,175 @@
+# Second CI surface for the same build the GitHub workflow runs.
+#
+# GitHub's hosted macOS machines are chronically short of capacity: every
+# attempt on macos-15-arm64 and macos-15 sits in the queue until the runner
+# acquisition times out, so the kernel never reaches the compiler. This job
+# runs the identical steps on CircleCI's macOS executor, which also supplies
+# Xcode 26-era images with an iOS 26/27 SDK.
+#
+# Packaging (payload/boot.img) additionally needs UNIXNU_UNIQUE_CHIP_ID, which
+# only exists as a GitHub secret. Set it as a CircleCI project environment
+# variable to get a flashable image; without it the job still builds and
+# validates the kernel.
+
+version: 2.1
+
+jobs:
+  kernel:
+    macos:
+      xcode: 26.1.1
+    resource_class: macos.m4pro.medium
+    working_directory: ~/cupid
+    environment:
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_INSTALL_CLEANUP: "1"
+      HOMEBREW_NO_ENV_HINTS: "1"
+    steps:
+      - checkout:
+          path: device
+
+      - run:
+          name: Check out UniXNU and the firmware
+          command: |
+            git clone --depth 1 https://github.com/UniXNU/UniXNU.git UniXNU
+            git clone --depth 1 https://github.com/obaosp/uefi-cupid.git uefi-cupid
+            cd uefi-cupid
+            git submodule update --init --depth 1 \
+              Common/Mu Common/Mu_OEM_Sample Mu_Basecore Silicium-ACPI \
+              Silicon/Silicium/OpensslPkg/Library/OpensslLib/openssl
+
+      - run:
+          name: Repair the stale submodule gitlinks
+          command: |
+            cd UniXNU
+            git update-index --cacheinfo 160000,93a5030c5d983d0ef90f0fca93879d6e36ad1ba8,drivers/ArmCpu
+            git ls-tree HEAD drivers/ArmCpu
+            aks_url=$(git config -f .gitmodules --get submodule.drivers/AppleKeyStoreState.url)
+            aks_head=$(git ls-remote "$aks_url" HEAD | cut -f1)
+            [ -n "$aks_head" ] || { echo "cannot resolve $aks_url" >&2; exit 1; }
+            echo "AppleKeyStoreState: $aks_url @ $aks_head"
+            git update-index --cacheinfo "160000,$aks_head,drivers/AppleKeyStoreState"
+            git ls-tree HEAD drivers/AppleKeyStoreState
+
+      - run:
+          name: Apply device-side UniXNU fixes
+          command: |
+            cd UniXNU
+            shopt -s nullglob
+            for patch in ../device/patches/unixnu/*.patch; do
+              echo "applying $(basename "$patch")"
+              git apply "$patch"
+            done
+
+      - run:
+          name: Install host tools
+          command: |
+            brew install llvm lld mtools dtc unifdef python@3.13
+            echo 'export PATH="$(brew --prefix llvm)/bin:$(brew --prefix python@3.13)/libexec/bin:$PATH"' >> "$BASH_ENV"
+            command -v unifdef
+
+      - run:
+          name: Select the Xcode toolchain
+          command: |
+            newest=$(ls -d /Applications/Xcode-*.app /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+            [ -n "$newest" ] || { echo "no Xcode under /Applications" >&2; ls -d /Applications/Xcode* || true; exit 1; }
+            echo "selected: $newest"
+            sudo xcode-select -s "$newest" || true
+            echo "export DEVELOPER_DIR=$newest/Contents/Developer" >> "$BASH_ENV"
+            sw_vers
+            uname -m
+            xcodebuild -version
+            xcrun --sdk iphoneos --show-sdk-version
+            python3 --version
+
+      - run:
+          name: Install the iOS 27 profile
+          command: |
+            cd device
+            scripts/install-os-profile.sh ../UniXNU
+
+      - run:
+          name: Resolve the configuration
+          command: |
+            cd UniXNU
+            ./unixnu defconfig cupid_ios27_defconfig -D ../device
+            ./unixnu fetch -D ../device
+            ./unixnu status --json -D ../device | tee ~/status.json
+            python3 - ~/status.json <<'PY'
+            import json, sys
+            status = json.load(open(sys.argv[1]))
+            text = json.dumps(status)
+            for needle in ("ios-27.0.1-24A446", "arm64e", "sm8450", "cupid_ios27"):
+                if needle not in text:
+                    sys.exit(f"resolved status is missing {needle}")
+            print("status resolves the iOS 27 arm64e profile, the sm8450 source and the cupid defconfig")
+            PY
+
+      - run:
+          name: Install the XnuPrelink reviewed symbols
+          command: |
+            cd UniXNU
+            test -d kits/XnuPrelink/fixtures
+            install -m 0644 \
+              ../device/patches/xnuprelink/fileset-cupid-24A446-symbols.json \
+              kits/XnuPrelink/fixtures/fileset-cupid-24A446-symbols.json
+            python3 -c 'import json; d=json.load(open("kits/XnuPrelink/fixtures/fileset-cupid-24A446-symbols.json")); print("reviewed functions:", len(d["functions"]), "kernelcache:", d["inputs"]["kernelcache_sha256"])'
+
+      - run:
+          name: Build the cupid device tree
+          command: |
+            cd device
+            scripts/build-cupid-dtb.sh
+
+      - run:
+          name: Build the kernel
+          no_output_timeout: 45m
+          command: |
+            cd UniXNU
+            ./unixnu build kernel -D ../device
+
+      - run:
+          name: Prelink mapping summary
+          when: always
+          command: |
+            cd UniXNU
+            LOG=$(find out/cupid -name prelink.log | head -1)
+            [ -n "$LOG" ] && { echo "== $LOG"; tail -5 "$LOG"; } || true
+            REPORT=$(find out/cupid -path '*/kernel/kernel.json' | head -1)
+            if [ -n "$REPORT" ]; then
+              python3 -c 'import json,sys;d=json.load(open(sys.argv[1]));s=d.get("stubbed",{});m=d.get("missing",{});print("allow_missing",d.get("allow_missing"),"mapping_complete",d.get("mapping_complete"));print("stubbed_targets",sum(len(v) for v in s.values()),"sites",sum(sum(v.values()) for v in s.values()));print("missing_targets",sum(len(v) for v in m.values()))' "$REPORT"
+            else
+              echo "no kernel report"
+            fi
+
+      - run:
+          name: Package the boot image
+          command: |
+            cd UniXNU
+            if [ -z "${UNIXNU_UNIQUE_CHIP_ID:-}" ]; then
+              echo "UNIXNU_UNIQUE_CHIP_ID is not set; stopping after the kernel build"
+              exit 0
+            fi
+            git -C drivers/DarwinBoot apply \
+              "$HOME/cupid/device/patches/darwinboot/0001-darwinboot-log-window-failure.patch"
+            ./unixnu build package -D ../device
+            ./unixnu build firmware -D ../device --uefi ../uefi-cupid
+            ./unixnu build payload -D ../device --uefi ../uefi-cupid --unique-chip-id "$UNIXNU_UNIQUE_CHIP_ID"
+            ./unixnu bootimg -D ../device --uefi ../uefi-cupid --dtb ../device/build/cupid/cupid.dtb
+
+      - store_artifacts:
+          path: UniXNU/out/cupid
+          destination: cupid-out
+      - store_artifacts:
+          path: status.json
+          destination: status.json
+
+workflows:
+  build:
+    jobs:
+      - kernel:
+          filters:
+            branches:
+              only:
+                - main
+                - ci-runner-race
+                - ci-circle
