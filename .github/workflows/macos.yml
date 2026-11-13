@@ -12,6 +12,7 @@ on:
     paths:
       - "board.toml"
       - "feeds.toml"
+      - "components/**"
       - "configs/**"
       - "dts/**"
       - "profiles/**"
