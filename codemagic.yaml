@@ -90,27 +90,37 @@ workflows:
       - name: Select the Xcode toolchain
         script: |
           set -euo pipefail
-          candidates=""
-          for app in /Applications/Xcode_26.6.app /Applications/Xcode_26*.app /Applications/Xcode_2*.app; do
-            [ -d "$app" ] && candidates="$candidates$app
-          "
-          done
-          newest=$(printf "%b" "$candidates" | grep -v '^$' | sort -V 2>/dev/null | tail -1)
-          if [ -z "$newest" ]; then
-            newest=$(printf "%b" "$candidates" | grep -v '^$' | sort | tail -1)
-          fi
-          if [ -z "$newest" ]; then
-            echo "no Xcode installation found under /Applications" >&2
-            ls -d /Applications/Xcode*.app 2>/dev/null || true
+          # GitHub's image ships Xcode_26.6.app; Codemagic uses a different
+          # separator and a different version set. Match any
+          # /Applications/Xcode*.app, order by numeric version, and fall back to
+          # the DEVELOPER_DIR Codemagic's `xcode: latest` already selected rather
+          # than failing when nothing matches the expected naming.
+          apps=$(ls -d /Applications/Xcode*.app 2>/dev/null || true)
+          echo "installed Xcode:"
+          printf '%s\n' "${apps:-none}" | sed 's/^/  /'
+          newest=$(APPS="$apps" python3 -c '
+          import os, re
+          apps = [p for p in os.environ.get("APPS", "").splitlines() if p.strip()]
+          def key(p):
+              m = re.search(r"Xcode[-_.](\d+)(?:\.(\d+))?(?:\.(\d+))?", p)
+              return tuple(int(g) if g else 0 for g in m.groups()) if m else (0, 0, 0)
+          apps = sorted(apps, key=key)
+          print(apps[-1] if apps else "")
+          ')
+          if [ -n "$newest" ] && [ -d "$newest" ]; then
+            echo "selected: $newest"
+            export DEVELOPER_DIR="$newest/Contents/Developer"
+            sudo xcode-select -s "$newest" 2>/dev/null || true
+          elif [ -n "${DEVELOPER_DIR:-}" ] && [ -d "$DEVELOPER_DIR" ]; then
+            echo "selected: $DEVELOPER_DIR (already chosen by Codemagic)"
+          else
+            echo "no Xcode installation found and DEVELOPER_DIR is unset" >&2
             exit 1
           fi
-          echo "selected: $newest"
           # Each Codemagic script runs in a fresh shell, so persist the choice in
-          # a small file that the later steps source instead of relying on
-          # xcode-select (which needs sudo and may be unavailable).
-          printf 'export DEVELOPER_DIR=%s/Contents/Developer\n' "$newest" > "$HOME/xcode_env.sh"
+          # a small file that the later steps source.
+          printf 'export DEVELOPER_DIR=%s\n' "$DEVELOPER_DIR" > "$HOME/xcode_env.sh"
           . "$HOME/xcode_env.sh"
-          sudo xcode-select -s "$newest" 2>/dev/null || true
           xcodebuild -version
 
       - name: Install host tools
