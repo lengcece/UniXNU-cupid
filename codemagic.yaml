@@ -1,0 +1,273 @@
+# Codemagic build definition for the cupid / iOS 27 XNU kernel.
+#
+# Why this file exists: GitHub's hosted macOS runners spend hours in the queue
+# ("The job was not acquired by Runner of type hosted") and the free tier has no
+# paid fallback. Codemagic's individual free plan includes 500 macOS M2 minutes
+# per month, one concurrency, and starts a build in minutes, so the same work is
+# available there without waiting for GitHub capacity.
+#
+# The step order is a faithful port of .github/workflows/macos.yml. Outputs are
+# copied into artifacts/ so Codemagic can hand them back as downloadable links
+# (GitHub artifacts need an authenticated session, Codemagic ones do not).
+
+workflows:
+  cupid-ios27-kernel:
+    name: cupid / iOS 27 kernel build
+    instance_type: mac_mini_m2
+    # Free-tier individual builds may run up to 120 minutes each.
+    max_build_duration: 120
+    environment:
+      xcode: latest
+      vars:
+        HOMEBREW_NO_AUTO_UPDATE: "1"
+        HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        HOMEBREW_NO_ENV_HINTS: "1"
+    cache:
+      cache_paths:
+        - $HOME/Library/Caches/Homebrew
+    artifacts:
+      - artifacts/**/*.log
+      - artifacts/**/*.json
+      - artifacts/**/*.img
+      - artifacts/**/*.macho
+      - artifacts/**/*.dtb
+    scripts:
+      - name: Describe the workspace
+        script: |
+          set -euo pipefail
+          echo "clone:        $CM_BUILD_DIR"
+          echo "branch:       $CM_BRANCH"
+          echo "commit:       $CM_COMMIT"
+          sw_vers
+          uname -m
+          df -h "$CM_BUILD_DIR"
+
+      - name: Check out UniXNU and the cupid firmware
+        script: |
+          set -euo pipefail
+          cd "$HOME"
+          rm -rf UniXNU uefi-cupid
+          git clone --depth 1 https://github.com/UniXNU/UniXNU.git UniXNU
+          git clone --depth 1 https://github.com/obaosp/uefi-cupid.git uefi-cupid
+          cd uefi-cupid
+          git submodule update --init --depth 1 \
+            Common/Mu Common/Mu_OEM_Sample Mu_Basecore Silicium-ACPI \
+            Silicon/Silicium/OpensslPkg/Library/OpensslLib/openssl
+          echo "UniXNU:      $(git -C "$HOME/UniXNU" rev-parse --short HEAD)"
+          echo "uefi-cupid:  $(git -C "$HOME/uefi-cupid" rev-parse --short HEAD)"
+
+      - name: Repair the stale submodule gitlinks
+        script: |
+          set -euo pipefail
+          cd "$HOME/UniXNU"
+          # UniXNU main pins drivers/ArmCpu at a commit its upstream rebased away,
+          # so `git submodule update --init --recursive` fails during fetch/build.
+          git update-index --cacheinfo 160000,93a5030c5d983d0ef90f0fca93879d6e36ad1ba8,drivers/ArmCpu
+          git ls-tree HEAD drivers/ArmCpu
+
+          # drivers/AppleKeyStoreState has the same problem; re-pin it to whatever
+          # that repository currently publishes so the next rebase cannot break it.
+          aks_url=$(git config -f .gitmodules --get submodule.drivers/AppleKeyStoreState.url)
+          aks_head=$(git ls-remote "$aks_url" HEAD | cut -f1)
+          [ -n "$aks_head" ] || { echo "cannot resolve $aks_url" >&2; exit 1; }
+          echo "AppleKeyStoreState: $aks_url @ $aks_head"
+          git update-index --cacheinfo "160000,$aks_head,drivers/AppleKeyStoreState"
+          git ls-tree HEAD drivers/AppleKeyStoreState
+
+      - name: Stage the board storage component and apply the device patches
+        script: |
+          set -euo pipefail
+          cd "$HOME/UniXNU"
+          mkdir -p drivers/Sm8450Ufs
+          cp "$CM_BUILD_DIR"/components/Sm8450Ufs/* drivers/Sm8450Ufs/
+          ls -la drivers/Sm8450Ufs
+          shopt -s nullglob
+          for patch in "$CM_BUILD_DIR"/patches/unixnu/*.patch; do
+            echo "applying $(basename "$patch")"
+            git apply "$patch"
+          done
+
+      - name: Select the Xcode toolchain
+        script: |
+          set -euo pipefail
+          candidates=""
+          for app in /Applications/Xcode_26.6.app /Applications/Xcode_26*.app /Applications/Xcode_2*.app; do
+            [ -d "$app" ] && candidates="$candidates$app
+          "
+          done
+          newest=$(printf "%b" "$candidates" | grep -v '^$' | sort -V 2>/dev/null | tail -1)
+          if [ -z "$newest" ]; then
+            newest=$(printf "%b" "$candidates" | grep -v '^$' | sort | tail -1)
+          fi
+          if [ -z "$newest" ]; then
+            echo "no Xcode installation found under /Applications" >&2
+            ls -d /Applications/Xcode*.app 2>/dev/null || true
+            exit 1
+          fi
+          echo "selected: $newest"
+          # Each Codemagic script runs in a fresh shell, so persist the choice in
+          # a small file that the later steps source instead of relying on
+          # xcode-select (which needs sudo and may be unavailable).
+          printf 'export DEVELOPER_DIR=%s/Contents/Developer\n' "$newest" > "$HOME/xcode_env.sh"
+          . "$HOME/xcode_env.sh"
+          sudo xcode-select -s "$newest" 2>/dev/null || true
+          xcodebuild -version
+
+      - name: Install host tools
+        script: |
+          set -euo pipefail
+          . "$HOME/xcode_env.sh"
+          brew install llvm lld mtools dtc
+          if ! command -v unifdef >/dev/null; then
+            brew install unifdef
+          fi
+          # Record the PATH additions for the later steps.
+          {
+            echo 'export DEVELOPER_DIR="'"$DEVELOPER_DIR"'"'
+            echo 'export PATH="/opt/homebrew/opt/llvm/bin:/opt/homebrew/bin:$(brew --prefix unifdef)/bin:$PATH"'
+          } > "$HOME/tool_env.sh"
+          . "$HOME/tool_env.sh"
+          xcodebuild -version
+          sdk=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "iphoneos SDK: $sdk"
+          case "$sdk" in
+            2[6-9].*|[3-9][0-9].*) ;;
+            *) echo "warning: iphoneos SDK $sdk is older than the iOS 27 SDK the profile targets" ;;
+          esac
+          python3 --version
+          for tool in git make clang cmake ninja unifdef ld.lld mformat mcopy dtc fdtoverlay llvm-nm llvm-objdump; do
+            printf '%-14s %s\n' "$tool" "$(command -v "$tool" || echo MISSING)"
+          done
+
+      - name: Install the iOS 27 profile
+        script: |
+          set -euo pipefail
+          . "$HOME/tool_env.sh"
+          cd "$CM_BUILD_DIR"
+          chmod +x scripts/*.sh
+          scripts/install-os-profile.sh "$HOME/UniXNU"
+
+      - name: Resolve the configuration
+        script: |
+          set -euo pipefail
+          . "$HOME/tool_env.sh"
+          mkdir -p "$CM_BUILD_DIR/artifacts"
+          cd "$HOME/UniXNU"
+          ./unixnu defconfig cupid_ios27_defconfig -D "$CM_BUILD_DIR"
+          ./unixnu fetch -D "$CM_BUILD_DIR"
+          ./unixnu status --json -D "$CM_BUILD_DIR" | tee "$CM_BUILD_DIR/artifacts/status.json"
+          python3 - "$CM_BUILD_DIR/artifacts/status.json" <<'PY'
+          import json, sys
+          status = json.load(open(sys.argv[1]))
+          text = json.dumps(status)
+          for needle in ("ios-27.0.1-24A446", "arm64e", "sm8450", "cupid_ios27"):
+              if needle not in text:
+                  sys.exit("resolved status is missing " + needle)
+          print("status resolves the iOS 27 arm64e profile, the sm8450 source and the cupid defconfig")
+          PY
+
+      - name: Install the XnuPrelink reviewed symbols
+        script: |
+          set -euo pipefail
+          . "$HOME/tool_env.sh"
+          cd "$HOME/UniXNU"
+          test -d kits/XnuPrelink/fixtures
+          install -m 0644 \
+            "$CM_BUILD_DIR/patches/xnuprelink/fileset-cupid-24A446-symbols.json" \
+            kits/XnuPrelink/fixtures/fileset-cupid-24A446-symbols.json
+          python3 -c 'import json;d=json.load(open("kits/XnuPrelink/fixtures/fileset-cupid-24A446-symbols.json"));print("reviewed functions:",len(d["functions"]),"kernelcache:",d["inputs"]["kernelcache_sha256"])'
+
+      - name: Build the cupid device tree
+        script: |
+          set -euo pipefail
+          . "$HOME/tool_env.sh"
+          cd "$CM_BUILD_DIR"
+          scripts/build-cupid-dtb.sh
+
+      - name: Build the kernel
+        script: |
+          set -euo pipefail
+          . "$HOME/tool_env.sh"
+          cd "$HOME/UniXNU"
+          ./unixnu build kernel -D "$CM_BUILD_DIR"
+
+      - name: Collect the kernel outputs and the prelink summary
+        script: |
+          set -uo pipefail
+          . "$HOME/tool_env.sh"
+          mkdir -p "$CM_BUILD_DIR/artifacts"
+          cd "$HOME/UniXNU" || exit 0
+          LOG=$(find out/cupid -name prelink.log | head -1 || true)
+          if [ -n "$LOG" ]; then echo "== $LOG"; tail -5 "$LOG"; cp "$LOG" "$CM_BUILD_DIR/artifacts/prelink.log" || true; fi
+          REPORT=$(find out/cupid -path '*/kernel/kernel.json' | head -1 || true)
+          if [ -n "$REPORT" ]; then
+            cp "$REPORT" "$CM_BUILD_DIR/artifacts/kernel.json" || true
+            python3 -c 'import json,sys;d=json.load(open(sys.argv[1]));s=d.get("stubbed",{});m=d.get("missing",{});print("allow_missing",d.get("allow_missing"),"mapping_complete",d.get("mapping_complete"));print("stubbed_targets",sum(len(v) for v in s.values()),"sites",sum(sum(v.values()) for v in s.values()));print("missing_targets",sum(len(v) for v in m.values()))' "$REPORT" || true
+          fi
+          K=$(find out/cupid -path '*/kernel/kernel.macho' | head -1 || true)
+          if [ -n "$K" ]; then
+            cp "$K" "$CM_BUILD_DIR/artifacts/" || true
+            echo "kernel.macho bytes: $(wc -c < "$K")"
+            export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
+            llvm-nm -n "$K" > "$CM_BUILD_DIR/artifacts/kernel-symbols.txt" 2>/dev/null || true
+          else
+            echo "no kernel.macho produced"
+          fi
+          find out/cupid -type f -name '*.log' -exec cp {} "$CM_BUILD_DIR/artifacts/" \; 2>/dev/null || true
+          ls -la "$CM_BUILD_DIR/artifacts"
+
+      - name: Build the package, firmware, payload and boot image
+        script: |
+          set -euo pipefail
+          . "$HOME/tool_env.sh"
+          cd "$HOME/UniXNU"
+          # The payload and the boot image need Apple's per-device ECID value.
+          # It only lives in Codemagic's environment variables; without it the
+          # build still proves whether the kernel compiles.
+          if [ -z "${UNIXNU_UNIQUE_CHIP_ID:-}" ]; then
+            echo "UNIXNU_UNIQUE_CHIP_ID is not set; skipping package/firmware/payload/bootimg."
+            echo "These four steps need the device unique chip id to produce a flashable boot.img."
+            exit 0
+          fi
+          git -C drivers/DarwinBoot apply \
+            "$CM_BUILD_DIR/patches/darwinboot/0001-darwinboot-log-window-failure.patch"
+          ./unixnu build package -D "$CM_BUILD_DIR"
+          ./unixnu build firmware -D "$CM_BUILD_DIR" --uefi "$HOME/uefi-cupid"
+          ./unixnu build payload -D "$CM_BUILD_DIR" --uefi "$HOME/uefi-cupid" --unique-chip-id "$UNIXNU_UNIQUE_CHIP_ID"
+          ./unixnu bootimg -D "$CM_BUILD_DIR" --uefi "$HOME/uefi-cupid" --dtb "$CM_BUILD_DIR/build/cupid/cupid.dtb"
+          find out/cupid -name boot.img -o -name payload.img | while read -r f; do
+            cp "$f" "$CM_BUILD_DIR/artifacts/"
+            echo "$f -> artifacts/$(basename "$f") $(wc -c < "$f") bytes"
+          done
+          cp "$CM_BUILD_DIR/build/cupid/cupid.dtb" "$CM_BUILD_DIR/artifacts/" || true
+
+      - name: Summarise
+        script: |
+          set -uo pipefail
+          mkdir -p "$CM_BUILD_DIR/artifacts"
+          {
+            echo "== cupid / iOS 27.0.1 (24A446, arm64e)"
+            echo "commit:      $CM_COMMIT"
+            echo "artifacts:"
+            ls -la "$CM_BUILD_DIR/artifacts" || true
+            echo
+            if [ -f "$CM_BUILD_DIR/artifacts/kernel.macho" ]; then
+              echo "RESULT: kernel.macho produced -> the kernel compiled on this run"
+            else
+              echo "RESULT: no kernel.macho -> the kernel did not compile; see the log of the 'Build the kernel' step"
+            fi
+            echo
+            if [ -f "$CM_BUILD_DIR/artifacts/boot.img" ]; then
+              echo "RESULT: boot.img produced -> flashable image ready"
+              shasum -a 256 "$CM_BUILD_DIR/artifacts/boot.img"
+            else
+              echo "RESULT: no boot.img (UNIXNU_UNIQUE_CHIP_ID missing or a later step failed)"
+            fi
+          } | tee "$CM_BUILD_DIR/artifacts/summary.txt"
+
+      - name: Remove the Apple inputs
+        script: |
+          set -uo pipefail
+          cd "$HOME/UniXNU" || exit 0
+          rm -rf out/ipsw out/feeds "$CM_BUILD_DIR/.cache/firmware" || true
+          find out/cupid -path '*/tree/.cache/firmware' -maxdepth 6 -exec rm -rf {} + 2>/dev/null || true
