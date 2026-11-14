@@ -127,7 +127,7 @@ workflows:
         script: |
           set -euo pipefail
           . "$HOME/xcode_env.sh"
-          brew install llvm lld mtools dtc
+          brew install llvm lld mtools dtc ninja
           if ! command -v unifdef >/dev/null; then
             brew install unifdef
           fi
