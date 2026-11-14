@@ -22,6 +22,12 @@ workflows:
         HOMEBREW_NO_AUTO_UPDATE: "1"
         HOMEBREW_NO_INSTALL_CLEANUP: "1"
         HOMEBREW_NO_ENV_HINTS: "1"
+        # Platform seed of the /chosen unique-chip-id. Not a per-device secret here:
+        # 0x457 is the placeholder seed the bring-up payloads of this board already
+        # carry (the ADT inside boot-ci14/ci15/ci16 shows unique-chip-id = 0x457,
+        # chip-id = 0x457), so the boot image it produces matches those images.
+        # Replace it with the owner's real seed before a payload carries user data.
+        UNIXNU_UNIQUE_CHIP_ID: "0x457"
     cache:
       cache_paths:
         - $HOME/Library/Caches/Homebrew
@@ -31,6 +37,7 @@ workflows:
       - artifacts/**/*.img
       - artifacts/**/*.macho
       - artifacts/**/*.dtb
+      - artifacts/**/summary.txt
     scripts:
       - name: Describe the workspace
         script: |
