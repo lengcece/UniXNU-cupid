@@ -1,0 +1,5 @@
+# Build definitions are executed by bash on macOS/Linux; a CRLF checkout breaks them.
+*.yaml text eol=lf
+*.yml text eol=lf
+*.sh text eol=lf
+*.patch text eol=lf
