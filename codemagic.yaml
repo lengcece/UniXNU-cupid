@@ -205,6 +205,34 @@ workflows:
           cd "$CM_BUILD_DIR"
           scripts/build-cupid-dtb.sh
 
+      - name: Prepare the offline Apple header cache
+        script: |
+          set -euo pipefail
+          tree="$HOME/UniXNU/out/cupid/ios-27.0.1-24A446/cupid_ios27/tree"
+          [ -d "$tree" ] || { echo "missing build tree: $tree" >&2; exit 1; }
+          mkdir -p "$tree/.cache/xnu-work"
+          tar -xzf "$CM_BUILD_DIR/xnu-precache.tar.gz" -C "$tree/.cache/xnu-work"
+          python3 - "$tree" <<'PY'
+          import hashlib, json, os, sys
+          from pathlib import Path
+          tree = Path(sys.argv[1])
+          tag = os.environ.get('UNIXNU_DRIVERKIT_TAG', 'xnu-10063.121.3')[4:]
+          ttag = os.environ.get('UNIXNU_TRUSTCACHE_TAG', 'xnu-8796.101.5')[4:]
+          src = tree / '.cache' / 'sources'
+          src.mkdir(parents=True, exist_ok=True)
+          def entry(p):
+              data = p.read_bytes()
+              return {"type": "file", "name": p.name, "size": len(data),
+                      "sha": hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest(),
+                      "download_url": ""}
+          dk = tree / '.cache' / 'xnu-work' / 'iokit' / 'DriverKit'
+          (src / f'xnu-driverkit-{tag}.json').write_text(json.dumps([entry(p) for p in sorted(dk.glob('*.h'))]))
+          (src / f'xnu-driverkit-crypto-{tag}.json').write_text(json.dumps([entry(p) for p in sorted((dk / 'crypto').glob('*.h'))]))
+          tc = tree / '.cache' / 'xnu-work' / 'EXTERNAL_HEADERS' / 'TrustCache'
+          (src / f'xnu-trustcache-{ttag}.json').write_text(json.dumps([entry(p) for p in sorted(tc.glob('*.h'))]))
+          print('offline Apple header cache ready:', tag, ttag)
+          PY
+
       - name: Build the kernel
         script: |
           set -euo pipefail
