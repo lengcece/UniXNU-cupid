@@ -31,10 +31,6 @@ workflows:
     cache:
       cache_paths:
         - $HOME/Library/Caches/Homebrew
-        # Reuse the prepared tree and the compiled objects: the kernel step is
-        # ~40 of the ~65 minutes, and patches.py re-prepares by stamp whenever
-        # the source or the patch series changes, so a stale cache is safe.
-        - $HOME/UniXNU/out/cupid/ios-27.0.1-24A446/cupid_ios27
     artifacts:
       - artifacts/**/*.log
       - artifacts/**/*.json
