@@ -312,7 +312,15 @@ workflows:
           fi
           git -C drivers/DarwinBoot apply \
             "$CM_BUILD_DIR/patches/darwinboot/0001-darwinboot-log-window-failure.patch"
-          ./unixnu build package -D "$CM_BUILD_DIR"
+          # EDK2 BaseTools compiles host tools with clang; the Xcode 26 SDK turns
+          # deprecation warnings into hard failures (-Werror) and make then dies at
+          # VfrCompile. Relax only those warnings and keep the evidence.
+          export CFLAGS="-Wno-error -Wno-deprecated-declarations -Wno-format"
+          export CXXFLAGS="-Wno-error -Wno-deprecated-declarations -Wno-format"
+          ./unixnu build package -D "$CM_BUILD_DIR" || {
+            cp -f "$HOME"/UniXNU/out/*/*/logs/*.log "$CM_BUILD_DIR/artifacts/" 2>/dev/null || true
+            exit 1
+          }
           ./unixnu build firmware -D "$CM_BUILD_DIR" --uefi "$HOME/uefi-cupid"
           ./unixnu ipsw fetch StaticTrustCache "Cryptex1,SystemTrustCache" -D "$CM_BUILD_DIR"
           python3 - <<'PYEOF'
@@ -339,6 +347,7 @@ workflows:
 
       - name: Summarise
         script: |
+          cp -f "$HOME"/UniXNU/out/*/*/logs/*.log "$CM_BUILD_DIR/artifacts/" 2>/dev/null || true
           set -uo pipefail
           mkdir -p "$CM_BUILD_DIR/artifacts"
           {
