@@ -217,29 +217,48 @@ workflows:
       - name: Prepare the offline Apple header cache
         script: |
           set -euo pipefail
-          tree="$HOME/UniXNU/out/cupid/ios-27.0.1-24A446/cupid_ios27/tree"
-          [ -d "$tree" ] || { echo "missing build tree: $tree" >&2; exit 1; }
-          mkdir -p "$tree/.cache/xnu-work"
-          tar -xzf "$CM_BUILD_DIR/xnu-precache.tar.gz" -C "$tree/.cache/xnu-work"
-          python3 - "$tree" <<'PY'
-          import hashlib, json, os, sys
+          # The tree does not exist yet: "unixnu build kernel" assembles it. Derive
+          # its path from the resolved configuration instead of hardcoding it, then
+          # seed .cache/sources. assemble() only mkdir(exist_ok) on .cache, so the
+          # listings written here survive into the kernel step.
+          status="$CM_BUILD_DIR/artifacts/status.json"
+          [ -f "$status" ] || { echo "missing $status; the resolve step did not run" >&2; exit 1; }
+          tree=$(python3 -c 'import json,os,sys;print(json.load(open(os.environ["CM_BUILD_DIR"]+"/artifacts/status.json"))["output"]+"/tree")')
+          echo "build tree: $tree"
+          stage="$CM_BUILD_DIR/.xnu-headers"
+          rm -rf "$stage"
+          mkdir -p "$stage" "$tree/.cache/sources"
+          tar -xzf "$CM_BUILD_DIR/xnu-precache.tar.gz" -C "$stage"
+          python3 - "$tree" "$stage" <<'PY'
+          import hashlib, json, sys
           from pathlib import Path
-          tree = Path(sys.argv[1])
-          tag = os.environ.get('UNIXNU_DRIVERKIT_TAG', 'xnu-10063.121.3')[4:]
-          ttag = os.environ.get('UNIXNU_TRUSTCACHE_TAG', 'xnu-8796.101.5')[4:]
-          src = tree / '.cache' / 'sources'
+          tree, stage = Path(sys.argv[1]), Path(sys.argv[2])
+          tag = sys.argv[3] if len(sys.argv) > 3 else 'xnu-10063.121.3'
+          ttag = sys.argv[4] if len(sys.argv) > 4 else 'xnu-8796.101.5'
+          src = (tree / '.cache' / 'sources')
           src.mkdir(parents=True, exist_ok=True)
           def entry(p):
               data = p.read_bytes()
               return {"type": "file", "name": p.name, "size": len(data),
                       "sha": hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest(),
-                      "download_url": ""}
-          dk = tree / '.cache' / 'xnu-work' / 'iokit' / 'DriverKit'
-          (src / f'xnu-driverkit-{tag}.json').write_text(json.dumps([entry(p) for p in sorted(dk.glob('*.h'))]))
-          (src / f'xnu-driverkit-crypto-{tag}.json').write_text(json.dumps([entry(p) for p in sorted((dk / 'crypto').glob('*.h'))]))
-          tc = tree / '.cache' / 'xnu-work' / 'EXTERNAL_HEADERS' / 'TrustCache'
-          (src / f'xnu-trustcache-{ttag}.json').write_text(json.dumps([entry(p) for p in sorted(tc.glob('*.h'))]))
-          print('offline Apple header cache ready:', tag, ttag)
+                      "download_url": p.resolve().as_uri()}
+          dk = stage / 'iokit' / 'DriverKit'
+          tc = stage / 'EXTERNAL_HEADERS' / 'TrustCache'
+          # Counts are the Apple source inventory for these tags: 17 headers next
+          # to DriverKit, 4 in crypto/, 5 in TrustCache. A short listing here would
+          # leave a header unrestorable and burn a whole build, so fail now.
+          plan = [
+              (f'xnu-driverkit-{tag[4:]}.json', sorted(dk.glob('*.h')), 17),
+              (f'xnu-driverkit-crypto-{tag[4:]}.json', sorted((dk / 'crypto').glob('*.h')), 4),
+              (f'xnu-trustcache-{ttag[4:]}.json', sorted(tc.glob('*.h')), 5),
+          ]
+          for name, files, expected in plan:
+              if len(files) != expected:
+                  raise SystemExit(f'{name}: {len(files)} headers in the precache, expected {expected}')
+              if any(f.stat().st_size == 0 for f in files):
+                  raise SystemExit(f'{name}: an empty header in the precache')
+              (src / name).write_text(json.dumps([entry(f) for f in files]))
+              print(f'{name}: {len(files)} headers seeded')
           PY
 
       - name: Build the kernel
