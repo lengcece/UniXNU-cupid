@@ -48,6 +48,15 @@ workflows:
           sw_vers
           uname -m
           df -h "$CM_BUILD_DIR"
+          # Cheap gate first: these repository assets cannot be rebuilt by any
+          # later step, and their absence used to surface ~60 minutes in, after
+          # the kernel had already compiled.
+          for f in tools/boot/ci16-head.bin tools/boot/splice.py \
+                   xnu-precache.tar.gz \
+                   patches/xnuprelink/fileset-cupid-24A446-symbols.json \
+                   patches/darwinboot/0001-darwinboot-log-window-failure.patch; do
+            [ -f "$CM_BUILD_DIR/$f" ] || { echo "missing repository file: $f" >&2; exit 1; }
+          done
 
       - name: Check out UniXNU and the cupid firmware
         script: |
@@ -340,8 +349,11 @@ workflows:
           set -uo pipefail
           A="$CM_BUILD_DIR/artifacts"
           if [ -f "$A/boot.img" ] && [ -f "$CM_BUILD_DIR/tools/boot/ci16-head.bin" ]; then
+            # No `|| true` any more: a wrong-size splice means there is nothing
+            # flashable, so it has to fail the build instead of warning about it.
             python3 "$CM_BUILD_DIR/tools/boot/splice.py" \
-              "$CM_BUILD_DIR/tools/boot/ci16-head.bin" "$A/boot.img" "$A/boot-splice.img" || true
+              "$CM_BUILD_DIR/tools/boot/ci16-head.bin" "$A/boot.img" "$A/boot-splice.img"
+            test "$(wc -c < "$A/boot-splice.img" | tr -d ' ')" = "186044416"
             echo "== sizes"
             wc -c "$A/boot.img" "$A/boot-splice.img" 2>/dev/null || true
             echo "== sha256"
@@ -355,7 +367,8 @@ workflows:
               -F "fileToUpload=@$A/boot.img" \
               https://litterbox.catbox.moe/resources/internals/api.php || echo "litterbox upload failed"
           else
-            echo "no boot.img or ci16 head blob; skipping the splice"
+            echo "no boot.img or ci16 head: this run produced nothing flashable" >&2
+            exit 1
           fi
       - name: Publish the images to a public mirror
         script: |
