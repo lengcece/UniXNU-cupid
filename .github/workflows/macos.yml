@@ -19,6 +19,7 @@ on:
       - "profiles/**"
       - "patches/**"
       - "scripts/**"
+      - "firmware/**"
       - ".github/workflows/macos.yml"
 
 permissions:
@@ -57,36 +58,37 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: UniXNU/UniXNU
-          # Known-good 2026-11-15 upstream: raw FAT payload, the old UniXNURamDiskDxe
-          # and the old patch-xnu-entry-probe.py that the 0001/0002 patches target.
-          ref: dfe174761e4ad4c253d8562125d3485643e97a1e
+          # The sheng reference pin: the raw-FAT payload and the driver/patch
+          # shapes this board's firmware overlay expects.
+          ref: 82b847c4ac3f68a57024b3082ffa3a03442defd9
+          submodules: recursive
           path: UniXNU
           persist-credentials: false
 
       - name: Check out the firmware repository
         uses: actions/checkout@v4
         with:
-          repository: obaosp/uefi-cupid
-          path: uefi-cupid
+          repository: UniXNU/uefi-sheng
+          path: uefi-sheng
           persist-credentials: false
 
       - name: Check out the firmware submodules
-        working-directory: uefi-cupid
+        working-directory: uefi-sheng
         run: |
           git submodule update --init --depth 1 \
             Common/Mu Common/Mu_OEM_Sample Mu_Basecore Silicium-ACPI \
             Silicon/Silicium/OpensslPkg/Library/OpensslLib/openssl
 
-      - name: Repair stale submodule gitlinks
-        working-directory: UniXNU
+      - name: Install the cupid platform overlay
         run: |
-          # The known-good dfe1747 components.toml references ArmCpu 2e11cda
-          # and AppleKeyStoreState 6ff4f11, which are no longer reachable from
-          # their repositories. Pin the index to the reachable ArmCpu 93a5030c
-          # and AppleKeyStoreState 58e5461e used by the last working images.
-          git update-index --cacheinfo 160000,93a5030c5d983d0ef90f0fca93879d6e36ad1ba8,drivers/ArmCpu
-          git update-index --cacheinfo 160000,58e5461ed3b751e4c91426b72d8686419abe9550,drivers/AppleKeyStoreState
-          git ls-tree HEAD drivers/ArmCpu drivers/AppleKeyStoreState
+          test -d device/firmware/Platforms/Xiaomi/cupidPkg
+          test -f device/firmware/Resources/Configs/cupid.toml
+          rm -rf uefi-sheng/Platforms/Xiaomi/cupidPkg
+          cp -R device/firmware/Platforms/Xiaomi/cupidPkg uefi-sheng/Platforms/Xiaomi/cupidPkg
+          install -m 0644 device/firmware/Resources/Configs/cupid.toml \
+            uefi-sheng/Resources/Configs/cupid.toml
+          ls uefi-sheng/Platforms/Xiaomi/cupidPkg
+          cat uefi-sheng/Resources/Configs/cupid.toml
 
       - name: Apply device-side UniXNU fixes
         working-directory: UniXNU
@@ -235,7 +237,7 @@ jobs:
       - name: Build the firmware
         id: firmware
         working-directory: UniXNU
-        run: ./unixnu build firmware -D ../device --uefi ../uefi-cupid
+        run: ./unixnu build firmware -D ../device --uefi ../uefi-sheng
 
       - name: Extract the OS trust caches
         working-directory: UniXNU
@@ -267,13 +269,13 @@ jobs:
         working-directory: UniXNU
         env:
           UNIXNU_UNIQUE_CHIP_ID: ${{ secrets.UNIXNU_UNIQUE_CHIP_ID }}
-        run: ./unixnu build payload -D ../device --uefi ../uefi-cupid --unique-chip-id "$UNIXNU_UNIQUE_CHIP_ID" --trust-cache build/cupid-trust.bundle
+        run: ./unixnu build payload -D ../device --uefi ../uefi-sheng --unique-chip-id "$UNIXNU_UNIQUE_CHIP_ID" --trust-cache build/cupid-trust.bundle
 
       - name: Build the boot image
         id: bootimg
         working-directory: UniXNU
         run: |
-          ./unixnu bootimg -D ../device --uefi ../uefi-cupid \
+          ./unixnu bootimg -D ../device --uefi ../uefi-sheng \
             --dtb ../device/build/cupid/cupid.dtb
 
       - name: Upload the boot image

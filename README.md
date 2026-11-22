@@ -85,11 +85,12 @@ cd ../UniXNU
 ./unixnu build kernel -D ../UniXNU-cupid      # Xcode + iphoneos SDK
 ```
 
-Full images need `uefi-cupid` (not published yet), the platform seed
-`UNIXNU_UNIQUE_CHIP_ID` and a Data seed:
+Full images need the current `uefi-sheng` firmware checkout with this
+repository's cupid overlay copied in (see `.github/workflows/macos.yml`), the
+platform seed `UNIXNU_UNIQUE_CHIP_ID` and a Data seed:
 
 ```sh
-scripts/package.sh --os ios-27.0.1-24A446 --uefi ../uefi-cupid
+scripts/package.sh --os ios-27.0.1-24A446 --uefi ../uefi-sheng
 ```
 
 ## CI

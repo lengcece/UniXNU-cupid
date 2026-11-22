@@ -57,8 +57,9 @@ source = "device:dts/cupid.dts"
 include_dirs = ["soc:dts"]
 
 [firmware]
-# uefi-cupid is the Mu-Silicium fork for this board; the cupidPkg platform is
-# the minimal vendor-HW-off configuration on WaipioPkg (SM8450).
+# The firmware is the current Mu-Silicium checkout (UniXNU/uefi-sheng); this
+# repository carries the cupid platform overlay under firmware/ (cupidPkg and
+# the cupid.toml boot-image config) and the CI copies it into that checkout.
 config = "cupid"
 dsc = "Platforms/Xiaomi/cupidPkg/cupid.dsc"
 fd = "Build/cupidPkg/{target}_CLANGPDB/FV/SILICIUM_UEFI.fd"

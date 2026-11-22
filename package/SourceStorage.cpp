@@ -12,12 +12,11 @@
 #include <kern/thread.h>
 #include <mach/vm_types.h>
 
-// Cupid bring-up: the current ArmCpu exports the real armcpu_spi_mask, but the
-// UFS interrupt path deliberately stays in the polled mode. Give it a distinct
-// refusing helper so the real mask is left to the ArmCpu's own consumers
-// (Bluetooth, etc.) and there is no duplicate symbol. The payload-addon-release
-// patch exports ml_static_mfree_prepare for NativeRamBlock; loader memory is
-// never released here.
+// Cupid bring-up: the UFS interrupt path deliberately stays in the polled
+// mode. Provide a refusing SPI mask helper with a board-unique name so it
+// cannot collide with a component that later exports the real mask. The
+// payload-addon-release patch exports ml_static_mfree_prepare for
+// NativeRamBlock; loader memory is never released here.
 extern "C" IOReturn unixnu_armcpu_spi_mask_refuse(uint32_t, bool)
 {
     return kIOReturnUnsupported;
