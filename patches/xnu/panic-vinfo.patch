@@ -41,7 +41,7 @@ index db1c4a0..72dce06 100644
 +		boot_progress_panic_vinfo.v_rowbytes = boot_progress_panic_vinfo.v_width * 4;
 +	}
 +	boot_progress_panic_vinfo.v_baseaddr = (unsigned long long)ml_io_map_wcomb(
-+	    (vm_offset_t)PE_state.bootArgs->Video.v_baseAddr,
++	    (vm_offset_t)((boot_args *)PE_state.bootArgs)->Video.v_baseAddr,
 +	    (vm_size_t)boot_progress_panic_vinfo.v_rowbytes * boot_progress_panic_vinfo.v_height);
 +	if (boot_progress_panic_vinfo.v_baseaddr == 0) {
 +		boot_progress_panic_vinfo.v_baseaddr = (unsigned long long)PE_state.video.v_baseAddr;
