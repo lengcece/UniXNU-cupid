@@ -89,15 +89,10 @@ size_mib = 176
 loader = "firmware"
 title = "iOS 27"
 dram_size = "0x80000000"
+# The stack-shift fix is in the kernel; keep the panic screen so an exec/launchd
+# failure is visible. The timed reset probe is deliberately off: with it the
+# panic screen does not fit the probe-cave padding, and we need the panic text.
 panic_screen = true
-# The three entry-probe bars show the loader handoff: green is
-# ExitBootServices, blue is the MMU-off kernel entry, magenta is the
-# instruction before the MMU is enabled. They stay because nothing draws
-# again until the kernel console is up. This timed probe resets six seconds
-# after the MMU is on, so a reboot proves the CPU completed the MMU enable;
-# a static screen places the stop at or before it. Remove it once a later
-# checkpoint is visible.
-entry_probe_reset_delay = 6
 kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "-no_slto_panic", "use_contiguous_hint=0", "native-source-storage=1", "native-ufs-root=1", "amfi_get_out_of_my_way=1"]
 
 [payload.adt]
