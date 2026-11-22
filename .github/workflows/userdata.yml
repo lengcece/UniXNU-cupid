@@ -45,7 +45,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: UniXNU/UniXNU
-          ref: main
+          ref: 991c183383523c850d25358cbf021ffd97f1ecbc
           path: UniXNU
           persist-credentials: false
 
