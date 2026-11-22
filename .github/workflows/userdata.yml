@@ -15,7 +15,7 @@ on:
         default: "ios-27.0.1-24A446"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: userdata-${{ github.ref }}
@@ -154,23 +154,21 @@ jobs:
           ls -lh "$DIR/parts/aa" "$DIR/parts/ab"
           sha256sum "$DIR"/parts/aa/* "$DIR"/parts/ab/*
 
-      - name: Publish chunks to an anonymous mirror
+      - name: Publish chunks to a public release
         working-directory: UniXNU
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          TAG="userdata-${GITHUB_RUN_ID}"
           IMAGE=$(find out/cupid -path '*/userdata/userdata-root.img' | head -1)
           DIR=$(dirname "$IMAGE")
-          BIN="cupid-ud-$(date +%s)"
-          echo "BIN=$BIN" >> "$GITHUB_STEP_SUMMARY"
+          gh release create "$TAG" --title "iOS 27 userdata $TAG" \
+            --notes "iOS 27 (24A446) root image chunks for cupid. Apple content: delete this release after flashing."
           for f in "$DIR"/parts/aa/* "$DIR"/parts/ab/*; do
-            name=$(basename "$f")
-            echo "uploading $name ($(stat -f %z "$f") bytes)"
-            curl -sS --max-time 1800 -X POST --data-binary @"$f" \
-              -H "filename: $name" -H "bin: $BIN" \
-              "https://filebin.net/$BIN/$name" -o /dev/null || echo "upload failed: $name"
-            echo "- https://filebin.net/$BIN/$name" >> "$GITHUB_STEP_SUMMARY"
+            echo "asset $(basename "$f") $(stat -f %z "$f") bytes"
+            gh release upload "$TAG" "$f" --clobber
           done
-          echo "mirror: https://filebin.net/$BIN"
-
+          gh release view "$TAG" --json assets -q '.assets[] | .name + " " + (.size|tostring) + " " + .url' | tee "$GITHUB_STEP_SUMMARY"
       - name: Upload userdata chunks A
         uses: actions/upload-artifact@v4
         with:
