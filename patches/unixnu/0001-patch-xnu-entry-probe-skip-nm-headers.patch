@@ -1,0 +1,16 @@
+diff --git a/scripts/patch-xnu-entry-probe.py b/scripts/patch-xnu-entry-probe.py
+index 9e3e598..0a4e3e8 100644
+--- a/scripts/patch-xnu-entry-probe.py
++++ b/scripts/patch-xnu-entry-probe.py
+@@ -140,7 +140,10 @@ def kernel_symbols(kernel):
+     for line in subprocess.run([nm, '-n', kernel], capture_output=True, text=True, check=True).stdout.splitlines():
+         parts = line.split()
+         if len(parts) == 3:
+-            table.setdefault(int(parts[0], 16), parts[2])
++            try:
++                table.setdefault(int(parts[0], 16), parts[2])
++            except ValueError:
++                continue
+     return table
+ 
+ 

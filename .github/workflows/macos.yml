@@ -57,7 +57,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: UniXNU/UniXNU
-          ref: main
+          # Known-good 2026-11-15 upstream: raw FAT payload, the old UniXNURamDiskDxe
+          # and the old patch-xnu-entry-probe.py that the 0001/0002 patches target.
+          ref: dfe174761e4ad4c253d8562125d3485643e97a1e
           path: UniXNU
           persist-credentials: false
 
@@ -78,13 +80,12 @@ jobs:
       - name: Repair stale submodule gitlinks
         working-directory: UniXNU
         run: |
-          # UniXNU main's components.toml pins drivers/ArmCpu at
-          # 5f3702697ed80fd2e98594de1af7e32b4b77b08b (which includes ArmCpuSleep.h)
-          # and drivers/AppleKeyStoreState at
-          # 8c70daf814aafdf4a3d35e40dde0322655fd0a83. Keep the index on those
-          # revisions; an older gitlink lacks ArmCpuSleep.h and fails the build.
-          git update-index --cacheinfo 160000,5f3702697ed80fd2e98594de1af7e32b4b77b08b,drivers/ArmCpu
-          git update-index --cacheinfo 160000,8c70daf814aafdf4a3d35e40dde0322655fd0a83,drivers/AppleKeyStoreState
+          # The known-good dfe1747 components.toml references ArmCpu 2e11cda
+          # and AppleKeyStoreState 6ff4f11, which are no longer reachable from
+          # their repositories. Pin the index to the reachable ArmCpu 93a5030c
+          # and AppleKeyStoreState 58e5461e used by the last working images.
+          git update-index --cacheinfo 160000,93a5030c5d983d0ef90f0fca93879d6e36ad1ba8,drivers/ArmCpu
+          git update-index --cacheinfo 160000,58e5461ed3b751e4c91426b72d8686419abe9550,drivers/AppleKeyStoreState
           git ls-tree HEAD drivers/ArmCpu drivers/AppleKeyStoreState
 
       - name: Apply device-side UniXNU fixes
