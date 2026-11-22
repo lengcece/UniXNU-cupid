@@ -162,13 +162,13 @@ jobs:
           TAG="userdata-${GITHUB_RUN_ID}"
           IMAGE=$(find out/cupid -path '*/userdata/userdata-root.img' | head -1)
           DIR=$(dirname "$IMAGE")
-          gh release create "$TAG" --title "iOS 27 userdata $TAG" \
+          gh release create "$TAG" -R "${{ github.repository }}" --title "iOS 27 userdata $TAG" \
             --notes "iOS 27 (24A446) root image chunks for cupid. Apple content: delete this release after flashing."
           for f in "$DIR"/parts/aa/* "$DIR"/parts/ab/*; do
             echo "asset $(basename "$f") $(stat -f %z "$f") bytes"
-            gh release upload "$TAG" "$f" --clobber
+            gh release upload "$TAG" "$f" --clobber -R "${{ github.repository }}"
           done
-          gh release view "$TAG" --json assets -q '.assets[] | .name + " " + (.size|tostring) + " " + .url' | tee "$GITHUB_STEP_SUMMARY"
+          gh release view "$TAG" -R "${{ github.repository }}" --json assets -q '.assets[] | .name + " " + (.size|tostring) + " " + .url' | tee "$GITHUB_STEP_SUMMARY"
       - name: Upload userdata chunks A
         uses: actions/upload-artifact@v4
         with:
