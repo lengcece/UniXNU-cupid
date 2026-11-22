@@ -78,15 +78,13 @@ jobs:
       - name: Repair stale submodule gitlinks
         working-directory: UniXNU
         run: |
-          # UniXNU main pins drivers/ArmCpu at 2e11cda72740b985dedde3e32ba72b0fd64eb475.
-          # The upstream repository no longer contains that commit (it was rebased),
-          # so `git submodule update --init --recursive` fails in unixnu fetch/build.
-          # Pin the index to the existing ArmCpu main commit for this build.
-          git update-index --cacheinfo 160000,93a5030c5d983d0ef90f0fca93879d6e36ad1ba8,drivers/ArmCpu
-          # UniXNU main also pins drivers/AppleKeyStoreState at
-          # 6ff4f11d8fdf853351f8d98e1bbe1373fb8da2e6, which is no longer reachable
-          # from the repository (remote main 58e5461e...). Pin the current main.
-          git update-index --cacheinfo 160000,58e5461ed3b751e4c91426b72d8686419abe9550,drivers/AppleKeyStoreState
+          # UniXNU main's components.toml pins drivers/ArmCpu at
+          # 5f3702697ed80fd2e98594de1af7e32b4b77b08b (which includes ArmCpuSleep.h)
+          # and drivers/AppleKeyStoreState at
+          # 8c70daf814aafdf4a3d35e40dde0322655fd0a83. Keep the index on those
+          # revisions; an older gitlink lacks ArmCpuSleep.h and fails the build.
+          git update-index --cacheinfo 160000,5f3702697ed80fd2e98594de1af7e32b4b77b08b,drivers/ArmCpu
+          git update-index --cacheinfo 160000,8c70daf814aafdf4a3d35e40dde0322655fd0a83,drivers/AppleKeyStoreState
           git ls-tree HEAD drivers/ArmCpu drivers/AppleKeyStoreState
 
       - name: Apply device-side UniXNU fixes
