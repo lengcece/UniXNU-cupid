@@ -24,3 +24,5 @@ CONFIG_XNU_SOURCE_STORAGE=y
 # that query accepts by construction.
 CONFIG_XNU_OWNER_ROOT_AUDIT=y
 CONFIG_XNU_OWNER_ROOT_TRUST=y
+# Framebuffer checkpoint page (package/BootProgressCupid.c and scripts/build-boot-progress.py).
+CONFIG_XNU_BOOT_PROGRESS=y

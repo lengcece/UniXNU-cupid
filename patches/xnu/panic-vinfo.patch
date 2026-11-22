@@ -1,51 +1,50 @@
 diff --git a/pexpert/arm/pe_init.c b/pexpert/arm/pe_init.c
-index db1c4a0..72dce06 100644
+index db1c4a0..d55b2bf 100644
 --- a/pexpert/arm/pe_init.c
 +++ b/pexpert/arm/pe_init.c
-@@ -26,6 +26,21 @@
+@@ -18,6 +18,7 @@
+ #include <arm/caches_internal.h>
+ #include <kern/debug.h>
+ #include <libkern/section_keywords.h>
++#include <kern/boot_progress.h>
+ #include <os/overflow.h>
+ 
+ #include <pexpert/arm64/board_config.h>
+@@ -26,6 +27,7 @@
  #include <arm64/sptm/sptm.h>
  #endif
  
-+/*
-+ * Board observer for the shared panic screen: the screen expects this layout
-+ * (height, width, depth, rowbytes, base), while PE_state.video is a PE_Video.
-+ * Fill it from the boot-args framebuffer after the console mapping so the panic
-+ * screen can draw before any display driver exists.
-+ */
-+struct boot_progress_panic_vinfo {
-+	unsigned int v_height;
-+	unsigned int v_width;
-+	unsigned int v_depth;
-+	unsigned int v_rowbytes;
-+	unsigned long long v_baseaddr;
-+};
-+__attribute__((used)) struct boot_progress_panic_vinfo boot_progress_panic_vinfo;
 +
  /* extern references */
  extern void     pe_identify_machine(boot_args *bootArgs);
  
-@@ -557,6 +572,24 @@ PE_create_console(void)
+@@ -557,6 +559,29 @@ PE_create_console(void)
  	} else {
  		PE_initialize_console(&PE_state.video, kPETextMode);
  	}
++#if defined(XNU_BOOT_PROGRESS) && XNU_BOOT_PROGRESS
 +	/*
-+	 * Map the firmware's scanout buffer explicitly. PE_state.video can hold a
-+	 * kernel copy, but ABL keeps scanning the boot-args framebuffer (the same
-+	 * buffer the entry bars paint), so the panic screen must write there.
++	 * The kernel can hold a copy of the framebuffer, while ABL keeps scanning
++	 * the boot-args buffer (the one the entry bars paint). Bind the page and
++	 * the panic observer to that buffer so stages are visible.
 +	 */
-+	boot_progress_panic_vinfo.v_height = (unsigned int)PE_state.video.v_height;
-+	boot_progress_panic_vinfo.v_width = (unsigned int)PE_state.video.v_width;
-+	boot_progress_panic_vinfo.v_depth = (unsigned int)PE_state.video.v_depth;
-+	boot_progress_panic_vinfo.v_rowbytes = (unsigned int)PE_state.video.v_rowBytes;
-+	if (boot_progress_panic_vinfo.v_rowbytes == 0) {
-+		boot_progress_panic_vinfo.v_rowbytes = boot_progress_panic_vinfo.v_width * 4;
++	{
++		unsigned width = (unsigned int)PE_state.video.v_width;
++		unsigned height = (unsigned int)PE_state.video.v_height;
++		unsigned rowbytes = (unsigned int)PE_state.video.v_rowBytes;
++		uintptr_t base;
++
++		if (rowbytes == 0) {
++			rowbytes = width * 4;
++		}
++		base = (uintptr_t)ml_io_map_wcomb(
++		    (vm_offset_t)((boot_args *)PE_state.bootArgs)->Video.v_baseAddr,
++		    (vm_size_t)rowbytes * height);
++		if (base != 0) {
++			boot_progress_bind(base, width, height, rowbytes, 32);
++		}
 +	}
-+	boot_progress_panic_vinfo.v_baseaddr = (unsigned long long)ml_io_map_wcomb(
-+	    (vm_offset_t)((boot_args *)PE_state.bootArgs)->Video.v_baseAddr,
-+	    (vm_size_t)boot_progress_panic_vinfo.v_rowbytes * boot_progress_panic_vinfo.v_height);
-+	if (boot_progress_panic_vinfo.v_baseaddr == 0) {
-+		boot_progress_panic_vinfo.v_baseaddr = (unsigned long long)PE_state.video.v_baseAddr;
-+	}
++#endif
  }
  
  int
