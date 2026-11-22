@@ -1,5 +1,5 @@
 diff --git a/pexpert/arm/pe_init.c b/pexpert/arm/pe_init.c
-index db1c4a0..3cde5f4 100644
+index db1c4a0..72dce06 100644
 --- a/pexpert/arm/pe_init.c
 +++ b/pexpert/arm/pe_init.c
 @@ -26,6 +26,21 @@
@@ -9,7 +9,7 @@ index db1c4a0..3cde5f4 100644
 +/*
 + * Board observer for the shared panic screen: the screen expects this layout
 + * (height, width, depth, rowbytes, base), while PE_state.video is a PE_Video.
-+ * Fill it from PE_state.video after the console mapping so the panic
++ * Fill it from the boot-args framebuffer after the console mapping so the panic
 + * screen can draw before any display driver exists.
 + */
 +struct boot_progress_panic_vinfo {
@@ -24,16 +24,28 @@ index db1c4a0..3cde5f4 100644
  /* extern references */
  extern void     pe_identify_machine(boot_args *bootArgs);
  
-@@ -557,6 +572,12 @@ PE_create_console(void)
+@@ -557,6 +572,24 @@ PE_create_console(void)
  	} else {
  		PE_initialize_console(&PE_state.video, kPETextMode);
  	}
-+	/* The console mapping is the base the panic screen can draw through. */
++	/*
++	 * Map the firmware's scanout buffer explicitly. PE_state.video can hold a
++	 * kernel copy, but ABL keeps scanning the boot-args framebuffer (the same
++	 * buffer the entry bars paint), so the panic screen must write there.
++	 */
 +	boot_progress_panic_vinfo.v_height = (unsigned int)PE_state.video.v_height;
 +	boot_progress_panic_vinfo.v_width = (unsigned int)PE_state.video.v_width;
 +	boot_progress_panic_vinfo.v_depth = (unsigned int)PE_state.video.v_depth;
 +	boot_progress_panic_vinfo.v_rowbytes = (unsigned int)PE_state.video.v_rowBytes;
-+	boot_progress_panic_vinfo.v_baseaddr = (unsigned long long)PE_state.video.v_baseAddr;
++	if (boot_progress_panic_vinfo.v_rowbytes == 0) {
++		boot_progress_panic_vinfo.v_rowbytes = boot_progress_panic_vinfo.v_width * 4;
++	}
++	boot_progress_panic_vinfo.v_baseaddr = (unsigned long long)ml_io_map_wcomb(
++	    (vm_offset_t)PE_state.bootArgs->Video.v_baseAddr,
++	    (vm_size_t)boot_progress_panic_vinfo.v_rowbytes * boot_progress_panic_vinfo.v_height);
++	if (boot_progress_panic_vinfo.v_baseaddr == 0) {
++		boot_progress_panic_vinfo.v_baseaddr = (unsigned long long)PE_state.video.v_baseAddr;
++	}
  }
  
  int
