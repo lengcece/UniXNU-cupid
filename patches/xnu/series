@@ -4,6 +4,7 @@
 no-assert-strings.patch
 image4-flags-shim.patch
 fileset-register-report.patch
+stack-shift.patch
 timers-avoid-trapped-physical-timer.patch
 ufs-probe.patch
 ufs-smmu.patch

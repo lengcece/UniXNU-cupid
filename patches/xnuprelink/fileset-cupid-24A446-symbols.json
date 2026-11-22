@@ -1269,5 +1269,11 @@
       "evidence": "32-bit global load in PROC_CROSSED_HIGH_WATERMARK__SEND_EXC_RESOURCE_AND_SUSPEND (iPhone original 0xac0d934, load at 0xac0da3c), guarded by disable_exc_resource_during_audio; matches the sheng 24A446 _audio_active entry."
     }
   ],
-  "sites": []
+  "sites": [
+    {
+      "site": "0xfffffff0080c85d0",
+      "native_symbol": "_unixnu_kernel_stack_shift",
+      "evidence": "AppleMobileFileIntegrity's __DATA_CONST,__got slot at original 0xfffffff0080c85d0 points to PAGE_SHIFT_CONST (original 0xfffffff007dec770, the native _PAGE_SHIFT_CONST user slot). Its only reader is the CoreEntitlements DER iterator's stack check (sp & ((1 << *slot) - 1) < 0x80 returns error 2), which assumes the stack base is aligned to 1 << shift, as on 16 KiB-page Apple kernels where the two lower guard pages are 32 KiB. On the native 4 KiB kernel the stack starts 8 KiB into a 32 KiB-aligned allocation, so the page shift (14) gives false out-of-stack errors at fixed call depths (OSEntitlements copyDictionary failed with 14 on the exec path). Bound to unixnu_kernel_stack_shift, the allocation alignment shift (15), for which sp & mask stays at least 8 KiB inside any stack. The other GOT consumers keep PAGE_SHIFT_CONST for page arithmetic."
+    }
+  ]
 }
