@@ -1,0 +1,19 @@
+diff --git a/osfmk/arm64/machine_routines.c b/osfmk/arm64/machine_routines.c
+index 07143d5..047d29c 100644
+--- a/osfmk/arm64/machine_routines.c
++++ b/osfmk/arm64/machine_routines.c
+@@ -70,6 +70,14 @@
+ #include <IOKit/IOHibernatePrivate.h>
+ #endif /* HIBERNATION */
+ 
++/*
++ * UniXNU ArmCpu's platform sleep hook. ArmCpu declares it as a weak import and
++ * installs armcpuPlatformSleep when its GIC sleep/resume path is enabled. The
++ * cupid bring-up runs with sleep-disabled=1, so a NULL default is sufficient
++ * and keeps the component linkable when no SoC platform provides it.
++ */
++void (*arm64_platform_sleep_hook)(boolean_t boot_cpu) = NULL;
++
+ #if defined(KERNEL_INTEGRITY_KTRR) || defined(KERNEL_INTEGRITY_CTRR) || defined(KERNEL_INTEGRITY_PV_CTRR)
+ #include <arm64/amcc_rorgn.h>
+ #endif

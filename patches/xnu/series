@@ -11,3 +11,5 @@ ufs-read.patch
 
 diag-sysctl-oid.patch
 diag-gate-caller.patch
+
+armcpu-sleep-hook.patch
