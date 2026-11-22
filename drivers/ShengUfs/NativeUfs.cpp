@@ -1019,7 +1019,7 @@ static uint64_t hostDmaAddress (const void *va);
 // completion halved small-block throughput against polling, and pausing with IODelay (2) blocks on a timer 2 to 3 times per command,
 // because the cores register no idle exit latency (ml_delay_should_spin), and each block is charged to the task as a wakeup.
 extern "C" IOReturn armcpu_spi_attach (uint32_t, bool, void (*) (void *), void *, uint32_t *, uint64_t *) __attribute__((weak_import));
-extern "C" IOReturn armcpu_spi_mask (uint32_t, bool) __attribute__((weak_import));
+extern "C" IOReturn unixnu_armcpu_spi_mask_refuse (uint32_t, bool) __attribute__((weak_import));
 constexpr uint32_t kUfsIrq = 265 + 32;
 static volatile uint32_t gIrqCount = 0;
 static bool gIrqMode = false;
@@ -1134,13 +1134,13 @@ extern "C" void native_ufs_set_spin (uint32_t us) { gSpinUs = us; }
 
 static void hostEnableInterrupt (void)
 {
-  if (gIrqMode || !&armcpu_spi_attach || !&armcpu_spi_mask) return;
+  if (gIrqMode || !&armcpu_spi_attach || !&unixnu_armcpu_spi_mask_refuse) return;
   uint32_t mode = kUfsWaitSpin, spinUs = 0;
   if (PE_parse_boot_argn ("native-ufs-wait", &mode, sizeof (mode)) && mode <= kUfsWaitSleep) gWaitMode = mode;
   if (PE_parse_boot_argn ("native-ufs-spin-us", &spinUs, sizeof (spinUs))) gSpinUs = spinUs;
   if (armcpu_spi_attach (kUfsIrq, false, hostInterrupt, nullptr, nullptr, nullptr) != kIOReturnSuccess) return;
   hostWrite (0x24, 1);                      // UTRCE only
-  if (armcpu_spi_mask (kUfsIrq, false) != kIOReturnSuccess) { hostWrite (0x24, 0); return; }
+  if (unixnu_armcpu_spi_mask_refuse (kUfsIrq, false) != kIOReturnSuccess) { hostWrite (0x24, 0); return; }
   gIrqMode = true;
   native_ufs_irq_mode = 1;
 }
