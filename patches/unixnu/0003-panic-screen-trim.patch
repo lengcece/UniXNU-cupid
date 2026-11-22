@@ -1,0 +1,14 @@
+--- a/scripts/xnu-panic-screen.c
++++ b/scripts/xnu-panic-screen.c
+@@ -52,11 +52,6 @@
+   const u32 cell = 6 * SCALE, line = 14 * SCALE;
+   u32 row, col, dy, dx;
+ 
+-  if (g->log && g->logn < PANIC_TEXT_BYTES - 1 && c >= 9 && c <= 126) {
+-    g->log[g->logn++] = (c < 32) ? ' ' : c;
+-    g->log[g->logn] = 0;
+-  }
+-
+   if (c == '\n') {
+     g->x = 0;
+     g->y += line;
