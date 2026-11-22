@@ -1195,6 +1195,78 @@
       "native_symbol": "__vfs_smr",
       "addend": 0,
       "evidence": "The original kernelcache's VFS SMR domain: struct smr at 0xfffffff00b70c680 with smr_clock 2/2 and smr_name \"VFS\" at +0x28, defined by SMR_DEFINE(_vfs_smr, \"VFS\") in bsd/vfs/vfs_init.c; the native build names it __vfs_smr. APFS imports it through the kernel export alias _apfs_smr:__vfs_smr (config/Private.exports, bsd/sys/vnode.h) and its prelinked __got rebases (0xfffffff0083d6a70 and 0xfffffff0083cc150) still targeted the original 0xb70c680, which is zero in the native fileset layout, so smr_enter faulted with smr_pcpu NULL (panic PC smr_enter+0x28, x19/x21 0xfffffff00b70c680). Binding this address to the native __vfs_smr lets the fileset rebase both GOT slots to the initialized VFS SMR; verified locally: both slots then resolve to 0xfffffff00b6c1a40."
+    },
+    {
+      "original": "0xfffffff00b792640",
+      "native_symbol": "_gIOParentMatchKey",
+      "addend": 0,
+      "evidence": "IOService::initialize's OSSymbol::withCString(\"IOParentMatch\") store at iPhone original 0xb2e4384; IOService::matchPassive reads it. Native _gIOParentMatchKey is the matching slot. Passed to ApplePMGR/IOAVFamily/IOHDCPFamily GOT consumers."
+    },
+    {
+      "original": "0xfffffff00b794680",
+      "native_symbol": "_gIOAllCPUInitializedKey",
+      "addend": 0,
+      "evidence": "IOService::initialize's OSSymbol::withCString(\"IOAllCPUInitialized\") store at iPhone original 0xb2e4b3c; cpu_boot_thread reads it. Native _gIOAllCPUInitializedKey is the matching slot. Passed to AppleARMPlatform/AppleARMWatchdogTimer GOT consumers."
+    },
+    {
+      "original": "0xfffffff007e5a880",
+      "native_symbol": "__ZN12IOUserClient9metaClassE",
+      "addend": 0,
+      "evidence": "Constant slot whose only pointer is IOUserClient::gMetaClass (iPhone original 0xb793e60); AppleARMPlatform loads it through its GOT. Retargeted from the sheng 24A446 fixture's IOUserClient metaclass entry."
+    },
+    {
+      "original": "0xfffffff007e5a7f8",
+      "native_symbol": "__ZN8OSObject9metaClassE",
+      "addend": 0,
+      "evidence": "Constant slot whose only pointer is OSObject::gMetaClass (iPhone original 0xb7943f8); IOHIDFamily/IOSurface load it through their GOTs. Retargeted from the sheng 24A446 fixture."
+    },
+    {
+      "original": "0xfffffff007e5a7f0",
+      "native_symbol": "__ZN12OSCollection9metaClassE",
+      "addend": 0,
+      "evidence": "Constant slot whose only pointer is OSCollection::gMetaClass (iPhone original 0xb791ab0); IOSurface loads it through its GOT. Retargeted from the sheng 24A446 fixture."
+    },
+    {
+      "original": "0xfffffff007e87df8",
+      "native_symbol": "__ZN18IOMemoryDescriptor9metaClassE",
+      "addend": 0,
+      "evidence": "Constant slot whose only pointer is IOMemoryDescriptor::gMetaClass (iPhone original 0xb792dd0); IOHIDFamily/IOReportFamily/IOStorageFamily/IOSurface load it through their GOTs. Retargeted from the sheng 24A446 fixture."
+    },
+    {
+      "original": "0xfffffff007e52c20",
+      "native_symbol": "__ZN5IOCPU9metaClassE",
+      "addend": 0,
+      "evidence": "Constant slot pointing to IOCPU::gMetaClass (iPhone original 0xb792f70), already identified by the reference data map. Retargeted from the sheng 24A446 fixture."
+    },
+    {
+      "original": "0xfffffff007e89b98",
+      "native_symbol": "__ZN9IOService9metaClassE",
+      "addend": 0,
+      "evidence": "Constant slot pointing to IOService::gMetaClass (iPhone original 0xb794498), already identified by the reference data map. Retargeted from the sheng 24A446 fixture."
+    },
+    {
+      "original": "0xfffffff007e89ba0",
+      "native_symbol": "__ZN8OSString9metaClassE",
+      "addend": 0,
+      "evidence": "Constant slot pointing to OSString::gMetaClass (iPhone original 0xb791b00), already identified by the reference data map. Retargeted from the sheng 24A446 fixture."
+    },
+    {
+      "original": "0xfffffff007e89bb8",
+      "native_symbol": "__ZN7OSArray9metaClassE",
+      "addend": 0,
+      "evidence": "Constant slot pointing to OSArray::gMetaClass (iPhone original 0xb7917f0), already identified by the reference data map. Retargeted from the sheng 24A446 fixture."
+    },
+    {
+      "original": "0xfffffff00b792378",
+      "native_symbol": "_gIODTPHandleKey",
+      "addend": 0,
+      "evidence": "Loaded by IODTInterruptControllerName as the getProperty key and assigned by IODeviceTreeAlloc. Already identified by the reference data map; matches the sheng 24A446 _gIODTPHandleKey entry."
+    },
+    {
+      "original": "0xfffffff00b739538",
+      "native_symbol": "_audio_active",
+      "addend": 0,
+      "evidence": "32-bit global load in PROC_CROSSED_HIGH_WATERMARK__SEND_EXC_RESOURCE_AND_SUSPEND (iPhone original 0xac0d934, load at 0xac0da3c), guarded by disable_exc_resource_during_audio; matches the sheng 24A446 _audio_active entry."
     }
   ],
   "sites": []
