@@ -1,5 +1,14 @@
 --- a/patches/xnu-12377/offline-owner-systemos-mount.patch
-+++ b/patches/xnu-12377/offline-owner-systemos-mount.patch
++++ a/patches/xnu-12377/offline-owner-systemos-mount.patch
+@@ -2,7 +2,7 @@
+ index c3f9fca2..9969eb6f 100644
+ --- a/bsd/kern/kern_exec.c
+ +++ b/bsd/kern/kern_exec.c
+-@@ -7940,8 +7940,256 @@ create_unix_stack(vm_map_t map, load_result_t* load_result,
++@@ -7940,8 +7940,257 @@ create_unix_stack(vm_map_t map, load_result_t* load_result,
+   *		word width of the kernel. Once the self-exec completes, the
+   *		initproc might be different.
+   */
 @@ -87,7 +87,8 @@
  +	request.flags |= MNT_UNION;
  +#endif
@@ -10,7 +19,24 @@
  +	    native_verified_block_root_authorized(root_device);
  +	if (!root_authorized) goto done;
  +	native_owner_cache_stage = 1;
-@@ -276,7 +277,9 @@
+@@ -260,7 +261,7 @@
+  {
+  	int retval[2];
+  	int error;
+-@@ -8013,7 +8261,7 @@ load_init_program_at_path(proc_t p, user_addr_t scratch_addr, const char* path)
++@@ -8013,7 +8262,7 @@ load_init_program_at_path(proc_t p, user_addr_t scratch_addr, const char* path)
+  	 */
+  	init_exec_args.fname = argv0;
+  	init_exec_args.argp = scratch_addr;
+@@ -269,14 +270,16 @@
+  
+  	/*
+  	 * So that init task is set with uid,gid 0 token
+-@@ -8081,6 +8329,15 @@ load_init_program(proc_t p)
++@@ -8081,6 +8330,17 @@ load_init_program(proc_t p)
+  
+  	(void) mach_vm_allocate_kernel(map, &scratch_addr, map_page_size,
+  	    VM_MAP_KERNEL_FLAGS_ANYWHERE());
  +	user_addr_t init_envp = USER_ADDR_NULL;
  +#if defined(XNU_OWNER_CACHE_MOUNT) && XNU_OWNER_CACHE_MOUNT
  +	int cache_error = native_owner_cache_prepare(p, (user_addr_t)scratch_addr, &init_envp);
@@ -21,3 +47,30 @@
  +#endif
  +#if defined(XNU_OWNER_DATA_MOUNT) && XNU_OWNER_DATA_MOUNT
  +	int data_error = native_owner_data_prepare(p, (user_addr_t)scratch_addr);
+@@ -285,7 +288,7 @@
+  #if CONFIG_MEMORYSTATUS
+  	(void) memorystatus_init_at_boot_snapshot();
+  #endif /* CONFIG_MEMORYSTATUS */
+-@@ -8106,7 +8363,7 @@ load_init_program(proc_t p)
++@@ -8106,7 +8366,7 @@ load_init_program(proc_t p)
+  
+  		if (is_release_suffix) {
+  			printf("load_init_program: attempting to load /sbin/launchd\n");
+@@ -294,7 +297,7 @@
+  			if (!error) {
+  				return;
+  			}
+-@@ -8117,7 +8374,7 @@ load_init_program(proc_t p)
++@@ -8117,7 +8377,7 @@ load_init_program(proc_t p)
+  			strlcat(launchd_path, launchd_suffix, sizeof(launchd_path));
+  
+  			printf("load_init_program: attempting to load %s\n", launchd_path);
+@@ -303,7 +306,7 @@
+  			if (!error) {
+  				return;
+  			} else if (error != ENOENT) {
+-@@ -8130,7 +8387,7 @@ load_init_program(proc_t p)
++@@ -8130,7 +8390,7 @@ load_init_program(proc_t p)
+  	error = ENOENT;
+  	for (i = 0; i < sizeof(init_programs) / sizeof(init_programs[0]); i++) {
+  		printf("load_init_program: attempting to load %s\n", init_programs[i]);
