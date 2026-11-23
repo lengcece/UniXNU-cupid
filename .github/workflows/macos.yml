@@ -107,7 +107,7 @@ jobs:
 
       - name: Install host tools
         run: |
-          brew install llvm lld mtools dtc
+          brew install llvm lld mtools dtc blacktop/tap/ipsw
           if ! command -v unifdef >/dev/null; then
             brew install unifdef
             echo "$(brew --prefix unifdef)/bin" >> "$GITHUB_PATH"
@@ -120,7 +120,7 @@ jobs:
           xcodebuild -version
           xcrun --sdk iphoneos --show-sdk-version
           python3 --version
-          for tool in git make clang cmake ninja unifdef ld.lld mformat mcopy dtc fdtoverlay xcodebuild; do
+          for tool in git make clang cmake ninja unifdef ld.lld mformat mcopy dtc fdtoverlay ipsw xcodebuild; do
             printf '%-10s %s\n' "$tool" "$(command -v "$tool" || echo MISSING)"
           done
           df -h "$GITHUB_WORKSPACE"
