@@ -14,6 +14,8 @@
 
 #include <IOKit/IOService.h>
 #include <IOKit/IOBSD.h>
+#include <IOKit/IODeviceTreeSupport.h>
+#include <libkern/c++/OSData.h>
 #include <libkern/c++/OSDictionary.h>
 #include <libkern/c++/OSIterator.h>
 #include <libkern/c++/OSNumber.h>
@@ -81,6 +83,19 @@ extern "C" int native_verified_block_root_authorized(dev_t device)
 #else
     return verifiedVolumeQuery(device, nullptr, nullptr);
 #endif
+}
+
+// 1 when the device tree already carries a 48-byte developer boot-manifest
+// identity (the ADT chosen value). The owner publisher must not replace it,
+// and unverified bring-up windows cannot produce the owner digest.
+extern "C" int native_owner_boot_manifest_provided(void)
+{
+    IORegistryEntry *chosen = IORegistryEntry::fromPath("/chosen", gIODTPlane);
+    if (!chosen) return 0;
+    OSData *value = OSDynamicCast(OSData, chosen->getProperty("boot-manifest-hash"));
+    const bool provided = value && value->getLength() == 48;
+    chosen->release();
+    return provided ? 1 : 0;
 }
 
 extern "C" int native_verified_block_manifest_sha384(dev_t device, const char *uuid, uint8_t digest[48])
