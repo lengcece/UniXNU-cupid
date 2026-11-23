@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 
 BLOCK = 4096
@@ -31,6 +32,7 @@ def sha256_file(path):
     return digest.hexdigest()
 
 
+@contextmanager
 def os_mount(image: Path, work: Path):
     """Attach a read-only OS disk image and yield its mount point."""
     info = plistlib.loads(subprocess.check_output(['hdiutil', 'info', '-plist']))
