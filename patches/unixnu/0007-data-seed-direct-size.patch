@@ -1,0 +1,32 @@
+--- a/scripts/make-data-seed.py
++++ b/scripts/make-data-seed.py
+@@ -48,7 +48,7 @@
+     with tempfile.TemporaryDirectory(prefix='new-data-', dir=args.output.parent) as td:
+         work = Path(td)
+         raw = work / 'seed.cdr'
+-        subprocess.run(['hdiutil', 'create', '-size', '32m', '-layout', 'NONE', '-fs', 'APFS',
++        subprocess.run(['hdiutil', 'create', '-size', f'{args.gib}g', '-layout', 'NONE', '-fs', 'APFS',
+                         '-volname', 'Data', '-type', 'UDTO', raw], check=True)
+         mount = work / 'mount'
+         mount.mkdir()
+@@ -91,11 +91,15 @@
+                           CAEnableFramebufferCompression=False, CAEnableIOSurfaceCompression=False))
+         finally:
+             subprocess.run(['hdiutil', 'detach', device], check=True)
+-        base = work / 'base.dbr'
+-        packed_ramdisk.pack(raw, base)
+-        candidate = work / 'data.dbr'
+-        subprocess.run([sys.executable, ROOT / 'scripts/seed-data-grow.py', '--gib', str(args.gib), base, candidate], check=True)
+-        candidate.replace(args.output)
++        header = raw.open('rb').read(4096)
++        if header[32:36] != b'NXSB':
++            sys.exit('the new APFS seed does not start with a container')
++        block_size = int.from_bytes(header[36:40], 'little')
++        blocks = int.from_bytes(header[40:48], 'little')
++        target = args.gib * 1024 ** 3
++        if block_size != 4096 or blocks * block_size > target or blocks * block_size < target - 64 * 1024 ** 2:
++            sys.exit(f'the container is {blocks * block_size} bytes, not the {target} asked for')
++        packed_ramdisk.pack(raw, args.output)
+     print(json.dumps(dict(output=str(args.output), first_install=True, preserve_for_future_builds=True)))
+ 
+ 
