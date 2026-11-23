@@ -28,6 +28,12 @@ int native_ufs_block_authenticates(IOService *provider, const char *uuid, uint8_
 int native_verified_block_root_authorized(dev_t device);
 int native_verified_block_manifest_sha384(dev_t device, const char *uuid, uint8_t digest[48]);
 int native_verified_block_volume_device(const char *uuid, dev_t *device, char *path, size_t size);
+int native_owner_publish_boot_manifest(dev_t rootDevice, const char *rootUUID,
+    dev_t cacheDevice, const char *cacheUUID);
+extern volatile int native_owner_cache_stage;
+extern volatile int native_owner_cache_status;
+extern volatile int native_owner_cache_mount_status;
+extern char native_owner_cache_device_path[64];
 }
 
 static constexpr size_t kDigestBytes = 48;
@@ -96,6 +102,27 @@ extern "C" int native_owner_boot_manifest_provided(void)
     const bool provided = value && value->getLength() == 48;
     chosen->release();
     return provided ? 1 : 0;
+}
+
+// The panic text travels through one string so the owner patch keeps the same
+// line count as the boot-progress patch that quotes it as context.
+extern "C" const char *native_owner_cache_diagnostic(void)
+{
+    static char text[192];
+    snprintf(text, sizeof(text),
+        "offline owner SystemOS mount failed: %d stage %d status %d mount %d dev %.32s",
+        native_owner_cache_status, native_owner_cache_stage, native_owner_cache_status,
+        native_owner_cache_mount_status, native_owner_cache_device_path);
+    return text;
+}
+
+// A seeded development identity already satisfies launchd; the publisher
+// refuses to replace it and cannot digest unverified windows.
+extern "C" int native_owner_publish_boot_manifest_seeded(dev_t rootDevice, const char *rootUUID,
+    dev_t cacheDevice, const char *cacheUUID)
+{
+    if (native_owner_boot_manifest_provided()) return 1;
+    return native_owner_publish_boot_manifest(rootDevice, rootUUID, cacheDevice, cacheUUID);
 }
 
 extern "C" int native_verified_block_manifest_sha384(dev_t device, const char *uuid, uint8_t digest[48])

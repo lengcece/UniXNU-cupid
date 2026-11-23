@@ -1,75 +1,20 @@
 --- a/patches/xnu-12377/offline-owner-systemos-mount.patch
 +++ a/patches/xnu-12377/offline-owner-systemos-mount.patch
-@@ -2,7 +2,7 @@
- index c3f9fca2..9969eb6f 100644
- --- a/bsd/kern/kern_exec.c
- +++ b/bsd/kern/kern_exec.c
--@@ -7940,8 +7940,257 @@ create_unix_stack(vm_map_t map, load_result_t* load_result,
-+@@ -7940,8 +7940,262 @@ create_unix_stack(vm_map_t map, load_result_t* load_result,
-   *		word width of the kernel. Once the self-exec completes, the
-   *		initproc might be different.
-   */
-@@ -13,6 +13,10 @@
+@@ -12,7 +12,7 @@
+ +#endif
  +extern int native_verified_block_volume_device(const char *, dev_t *, char *, size_t);
  +#if defined(XNU_OWNER_BOOT_MANIFEST) && XNU_OWNER_BOOT_MANIFEST
- +extern int native_owner_publish_boot_manifest(dev_t, const char *, dev_t, const char *);
-++/* Unverified bring-up: an ADT-supplied development identity already satisfies
-++ * launchd; the publisher refuses to replace it and cannot digest unverified
-++ * windows. */
-++extern int native_owner_boot_manifest_provided(void);
+-+extern int native_owner_publish_boot_manifest(dev_t, const char *, dev_t, const char *);
+++extern int native_owner_publish_boot_manifest(dev_t, const char *, dev_t, const char *); extern int native_owner_publish_boot_manifest_seeded(dev_t, const char *, dev_t, const char *);
  +#endif
  +#if defined(XNU_OWNER_CACHE_STARTUP) && XNU_OWNER_CACHE_STARTUP
  +extern void commpage_update_dyld_flags(uint64_t);
-@@ -151,6 +155,7 @@
+@@ -150,7 +150,7 @@
  +	if (!root_recheck) error = EAUTH;
  +#if defined(XNU_OWNER_BOOT_MANIFEST) && XNU_OWNER_BOOT_MANIFEST
  +	if (!error && cache_authorized && root_recheck &&
-++	    !native_owner_boot_manifest_provided() &&
- +	    !native_owner_publish_boot_manifest(root_device, XNU_OWNER_ROOT_VOLUME_UUID,
+-+	    !native_owner_publish_boot_manifest(root_device, XNU_OWNER_ROOT_VOLUME_UUID,
+++	    !native_owner_publish_boot_manifest_seeded(root_device, XNU_OWNER_ROOT_VOLUME_UUID,
  +	        selected, volume)) error = EAUTH;
  +#endif
-@@ -261,7 +266,7 @@
-  {
-  	int retval[2];
-  	int error;
--@@ -8013,7 +8262,7 @@ load_init_program_at_path(proc_t p, user_addr_t scratch_addr, const char* path)
-+@@ -8013,7 +8267,7 @@ load_init_program_at_path(proc_t p, user_addr_t scratch_addr, const char* path)
-  	 */
-  	init_exec_args.fname = argv0;
-  	init_exec_args.argp = scratch_addr;
-@@ -270,7 +275,7 @@
-  
-  	/*
-  	 * So that init task is set with uid,gid 0 token
--@@ -8081,6 +8330,17 @@ load_init_program(proc_t p)
-+@@ -8081,6 +8335,17 @@ load_init_program(proc_t p)
-  
-  	(void) mach_vm_allocate_kernel(map, &scratch_addr, map_page_size,
-  	    VM_MAP_KERNEL_FLAGS_ANYWHERE());
-@@ -288,7 +293,7 @@
-  #if CONFIG_MEMORYSTATUS
-  	(void) memorystatus_init_at_boot_snapshot();
-  #endif /* CONFIG_MEMORYSTATUS */
--@@ -8106,7 +8366,7 @@ load_init_program(proc_t p)
-+@@ -8106,7 +8371,7 @@ load_init_program(proc_t p)
-  
-  		if (is_release_suffix) {
-  			printf("load_init_program: attempting to load /sbin/launchd\n");
-@@ -297,7 +302,7 @@
-  			if (!error) {
-  				return;
-  			}
--@@ -8117,7 +8377,7 @@ load_init_program(proc_t p)
-+@@ -8117,7 +8382,7 @@ load_init_program(proc_t p)
-  			strlcat(launchd_path, launchd_suffix, sizeof(launchd_path));
-  
-  			printf("load_init_program: attempting to load %s\n", launchd_path);
-@@ -306,7 +311,7 @@
-  			if (!error) {
-  				return;
-  			} else if (error != ENOENT) {
--@@ -8130,7 +8390,7 @@ load_init_program(proc_t p)
-+@@ -8130,7 +8395,7 @@ load_init_program(proc_t p)
-  	error = ENOENT;
-  	for (i = 0; i < sizeof(init_programs) / sizeof(init_programs[0]); i++) {
-  		printf("load_init_program: attempting to load %s\n", init_programs[i]);
+ +#if defined(XNU_OWNER_CACHE_STARTUP) && XNU_OWNER_CACHE_STARTUP

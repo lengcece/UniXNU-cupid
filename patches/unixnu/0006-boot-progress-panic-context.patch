@@ -1,0 +1,11 @@
+--- a/patches/xnu-12377/zzz-boot-progress.patch
++++ a/patches/xnu-12377/zzz-boot-progress.patch
+@@ -86,7 +86,7 @@
+ +	boot_progress_stage("SystemOS mount enter");
+  	int cache_error = native_owner_cache_prepare(p, (user_addr_t)scratch_addr, &init_envp);
+ +	boot_progress_stage("SystemOS mount returned");
+- 	if (cache_error) panic("offline owner SystemOS mount failed: %d", cache_error);
++ 	if (cache_error) panic("%s", native_owner_cache_diagnostic());
+  #endif
+  #if defined(XNU_OWNER_DATA_MOUNT) && XNU_OWNER_DATA_MOUNT
+ +	boot_progress_stage("Data mount enter");
