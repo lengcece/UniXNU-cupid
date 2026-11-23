@@ -24,5 +24,13 @@ CONFIG_XNU_SOURCE_STORAGE=y
 # that query accepts by construction.
 CONFIG_XNU_OWNER_ROOT_AUDIT=y
 CONFIG_XNU_OWNER_ROOT_TRUST=y
+CONFIG_XNU_NATIVE_RAM_BLOCK=y
+# SystemOS/dyld cache + owner boot manifest, matching the sheng 27 chain.
+# Data mount is added once the cupid Data seed exists.
+CONFIG_XNU_OWNER_CACHE_MOUNT=y
+CONFIG_XNU_OWNER_CACHE_STARTUP=y
+CONFIG_XNU_OWNER_BOOT_MANIFEST=y
+CONFIG_XNU_OWNER_UNION_SYSTEMOS=y
+
 # Framebuffer checkpoint page (package/BootProgressCupid.c and scripts/build-boot-progress.py).
 CONFIG_XNU_BOOT_PROGRESS=y

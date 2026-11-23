@@ -120,3 +120,8 @@ unixnu = "../UniXNU"
 
 [package.defconfig]
 "ios-27.0.1-24A446" = "cupid_ios27_defconfig"
+
+[adt.chosen.bytes]
+# Development-only owner identity, like the marble bring-up value: launchd's
+# mount phase reads this until a signed owner image set is available.
+"boot-manifest-hash" = "474b0ce444b41c5380e498960cc30c45f5abd2206808b3ba378278854a0ab90d80c1976832df570c55b8401b9bce093e"
