@@ -146,6 +146,49 @@ jobs:
           print("status resolves the iOS 27 arm64e profile, the sm8450 source and the cupid defconfig")
           PY
 
+      - name: Restore the Data seed
+        id: data-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: UniXNU/build/cupid-data.dbr
+          key: cupid-data-seed-v1-24A446
+
+      - name: Prepare the Data seed
+        id: data
+        working-directory: UniXNU
+        run: |
+          if [ ! -f build/cupid-data.dbr ]; then
+            os_image=$(./unixnu ipsw fetch OS -D ../device | tail -1)
+            python3 ../device/scripts/build-cupid-data-seed.py \
+              --unixnu . --os-image "$os_image" \
+              --output build/cupid-data.dbr --gib 64 --build 24A446 --skip-setup
+          else
+            python3 ../device/scripts/build-cupid-data-seed.py \
+              --unixnu . --output build/cupid-data.dbr --gib 64 --build 24A446 \
+              --skip-setup --if-missing
+          fi
+
+      - name: Bind the Data volume UUID
+        working-directory: UniXNU
+        run: |
+          python3 - <<'PY'
+          import json, re
+          from pathlib import Path
+          seed = json.loads(Path('build/cupid-data.dbr.json').read_text())
+          config = Path('../device/configs/cupid_ios27_defconfig')
+          text = config.read_text()
+          if 'CONFIG_XNU_OWNER_DATA_MOUNT=y' not in text:
+              text += 'CONFIG_XNU_OWNER_DATA_MOUNT=y\n'
+          value = f'CONFIG_XNU_OWNER_DATA_VOLUME_UUID="{seed["uuid"]}"'
+          if re.search(r'^CONFIG_XNU_OWNER_DATA_VOLUME_UUID=', text, re.M):
+              text = re.sub(r'^CONFIG_XNU_OWNER_DATA_VOLUME_UUID=.*$', value, text, flags=re.M)
+          else:
+              text += value + '\n'
+          config.write_text(text)
+          print('Data UUID', seed['uuid'], 'seed bytes', seed['bytes'])
+          PY
+          ./unixnu defconfig cupid_ios27_defconfig -D ../device
+
       - name: Install the XnuPrelink reviewed symbols
         working-directory: UniXNU
         run: |
@@ -167,7 +210,7 @@ jobs:
       - name: Build the kernel
         id: kernel
         working-directory: UniXNU
-        run: ./unixnu build kernel -D ../device
+        run: ./unixnu build kernel -D ../device --data-ramdisk build/cupid-data.dbr
 
       - name: Prelink mapping summary
         if: always()
@@ -271,7 +314,7 @@ jobs:
         working-directory: UniXNU
         env:
           UNIXNU_UNIQUE_CHIP_ID: ${{ secrets.UNIXNU_UNIQUE_CHIP_ID }}
-        run: ./unixnu build payload -D ../device --uefi ../uefi-sheng --unique-chip-id "$UNIXNU_UNIQUE_CHIP_ID" --trust-cache build/cupid-trust.bundle
+        run: ./unixnu build payload -D ../device --uefi ../uefi-sheng --unique-chip-id "$UNIXNU_UNIQUE_CHIP_ID" --trust-cache build/cupid-trust.bundle --data-ramdisk build/cupid-data.dbr
 
       - name: Build the boot image
         id: bootimg
@@ -288,6 +331,24 @@ jobs:
           path: |
             UniXNU/out/cupid/*/*/boot/boot.img
             UniXNU/out/cupid/*/*/payload/payload.img
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Save the Data seed
+        if: always() && steps.data-cache.outputs.cache-hit != 'true' && steps.data.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: UniXNU/build/cupid-data.dbr
+          key: cupid-data-seed-v1-24A446
+
+      - name: Upload the Data seed
+        if: always() && steps.data.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cupid-data-seed
+          path: |
+            UniXNU/build/cupid-data.dbr
+            UniXNU/build/cupid-data.dbr.json
           if-no-files-found: error
           retention-days: 7
 
