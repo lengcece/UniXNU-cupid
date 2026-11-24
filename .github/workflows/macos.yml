@@ -67,12 +67,20 @@ jobs:
           path: UniXNU
           persist-credentials: false
 
+      - name: Record the UniXNU revision
+        id: unixnu-rev
+        run: echo "rev=$(git -C UniXNU rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Check out the firmware repository
         uses: actions/checkout@v4
         with:
           repository: UniXNU/uefi-sheng
           path: uefi-sheng
           persist-credentials: false
+
+      - name: Record the firmware revision
+        id: uefi-rev
+        run: echo "rev=$(git -C uefi-sheng rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Check out the firmware submodules
         working-directory: uefi-sheng
@@ -169,6 +177,7 @@ jobs:
           fi
 
       - name: Bind the Data volume UUID
+        id: data-bind
         working-directory: UniXNU
         run: |
           python3 - <<'PY'
@@ -187,7 +196,17 @@ jobs:
           config.write_text(text)
           print('Data UUID', seed['uuid'], 'seed bytes', seed['bytes'])
           PY
+          printf 'uuid=%s\n' "$(python3 -c 'import json; print(json.load(open("build/cupid-data.dbr.json"))["uuid"])')" >> "$GITHUB_OUTPUT"
           ./unixnu defconfig cupid_ios27_defconfig -D ../device
+
+      - name: Restore the XNU build cache
+        id: xnu-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: UniXNU/out/cupid/ios-27.0.1-24A446/cupid_ios27/tree/build
+          key: cupid-xnu-v1-${{ hashFiles('device/board.toml','device/configs/**','device/package/**','device/drivers/**','device/profiles/**','device/scripts/**','device/feeds.toml') }}-${{ steps.data-bind.outputs.uuid }}-${{ steps.unixnu-rev.outputs.rev }}-${{ github.sha }}
+          restore-keys: |
+            cupid-xnu-v1-${{ hashFiles('device/board.toml','device/configs/**','device/package/**','device/drivers/**','device/profiles/**','device/scripts/**','device/feeds.toml') }}-${{ steps.data-bind.outputs.uuid }}-${{ steps.unixnu-rev.outputs.rev }}-
 
       - name: Install the XnuPrelink reviewed symbols
         working-directory: UniXNU
@@ -227,6 +246,14 @@ jobs:
           else
             echo "no kernel report"
           fi
+
+      - name: Save the XNU build cache
+        if: always() && steps.xnu-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: UniXNU/out/cupid/ios-27.0.1-24A446/cupid_ios27/tree/build
+          key: cupid-xnu-v1-${{ hashFiles('device/board.toml','device/configs/**','device/package/**','device/drivers/**','device/profiles/**','device/scripts/**','device/feeds.toml') }}-${{ steps.data-bind.outputs.uuid }}-${{ steps.unixnu-rev.outputs.rev }}-${{ github.sha }}
 
       - name: Upload the native symbols
         if: always()
@@ -274,15 +301,51 @@ jobs:
           git -C drivers/DarwinBoot apply \
             "$GITHUB_WORKSPACE/device/patches/darwinboot/0001-darwinboot-log-window-failure.patch"
 
+      - name: Restore the package build cache
+        id: package-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: UniXNU/out/cupid/ios-27.0.1-24A446/cupid_ios27/package
+          key: cupid-pkg-v1-${{ hashFiles('device/board.toml','device/configs/**','device/package/**','device/drivers/**','device/scripts/**','device/profiles/**') }}-${{ steps.unixnu-rev.outputs.rev }}-${{ github.sha }}
+          restore-keys: |
+            cupid-pkg-v1-${{ hashFiles('device/board.toml','device/configs/**','device/package/**','device/drivers/**','device/scripts/**','device/profiles/**') }}-${{ steps.unixnu-rev.outputs.rev }}-
+
       - name: Build the package
         id: package
+        if: steps.package-cache.outputs.cache-matched-key == ''
         working-directory: UniXNU
         run: ./unixnu build package -D ../device
 
+      - name: Save the package build cache
+        if: success() && steps.package-cache.outputs.cache-matched-key == ''
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: UniXNU/out/cupid/ios-27.0.1-24A446/cupid_ios27/package
+          key: cupid-pkg-v1-${{ hashFiles('device/board.toml','device/configs/**','device/package/**','device/drivers/**','device/scripts/**','device/profiles/**') }}-${{ steps.unixnu-rev.outputs.rev }}-${{ github.sha }}
+
+      - name: Restore the firmware build cache
+        id: firmware-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: uefi-sheng/Build
+          key: cupid-fw-v1-${{ hashFiles('device/firmware/**','device/package/**','device/board.toml','device/scripts/**') }}-${{ steps.uefi-rev.outputs.rev }}-${{ github.sha }}
+          restore-keys: |
+            cupid-fw-v1-${{ hashFiles('device/firmware/**','device/package/**','device/board.toml','device/scripts/**') }}-${{ steps.uefi-rev.outputs.rev }}-
+
       - name: Build the firmware
         id: firmware
+        if: steps.firmware-cache.outputs.cache-matched-key == ''
         working-directory: UniXNU
         run: ./unixnu build firmware -D ../device --uefi ../uefi-sheng
+
+      - name: Save the firmware build cache
+        if: success() && steps.firmware-cache.outputs.cache-matched-key == ''
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: uefi-sheng/Build
+          key: cupid-fw-v1-${{ hashFiles('device/firmware/**','device/package/**','device/board.toml','device/scripts/**') }}-${{ steps.uefi-rev.outputs.rev }}-${{ github.sha }}
 
       - name: Extract the OS trust caches
         working-directory: UniXNU

@@ -41,7 +41,6 @@ archives = [
   "build-fileset-release-reference.py --tree . --lto",
   "component:ShengUfs",
   "component:RamBlock",
-  "component:AppleKeyStoreState",
   "build-sheng-source-storage.py --policy-dir scripts/policies/ipados-27.0.1-24A446",
 ]
 config_fragments = ["arch:configs/common.config", "soc:configs/sm8450.config", "os:configs/ios.config"]
