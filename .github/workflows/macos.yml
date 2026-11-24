@@ -203,10 +203,12 @@ jobs:
         id: xnu-cache
         uses: actions/cache/restore@v4
         with:
-          path: UniXNU/out/cupid/ios-27.0.1-24A446/cupid_ios27/tree/build
-          key: cupid-xnu-v1-${{ hashFiles('device/board.toml','device/configs/**','device/package/**','device/drivers/**','device/profiles/**','device/scripts/**','device/feeds.toml') }}-${{ steps.data-bind.outputs.uuid }}-${{ steps.unixnu-rev.outputs.rev }}-${{ github.sha }}
+          path: |
+            UniXNU/out/cupid/ios-27.0.1-24A446/cupid_ios27/tree/build
+            UniXNU/out/cupid/ios-27.0.1-24A446/cupid_ios27/tree/.cache/fakeroot
+          key: cupid-xnu-v2-${{ hashFiles('device/board.toml','device/configs/**','device/package/**','device/drivers/**','device/profiles/**','device/scripts/**','device/feeds.toml') }}-${{ steps.data-bind.outputs.uuid }}-${{ steps.unixnu-rev.outputs.rev }}-${{ github.sha }}
           restore-keys: |
-            cupid-xnu-v1-${{ hashFiles('device/board.toml','device/configs/**','device/package/**','device/drivers/**','device/profiles/**','device/scripts/**','device/feeds.toml') }}-${{ steps.data-bind.outputs.uuid }}-${{ steps.unixnu-rev.outputs.rev }}-
+            cupid-xnu-v2-${{ hashFiles('device/board.toml','device/configs/**','device/package/**','device/drivers/**','device/profiles/**','device/scripts/**','device/feeds.toml') }}-${{ steps.data-bind.outputs.uuid }}-${{ steps.unixnu-rev.outputs.rev }}-
 
       - name: Install the XnuPrelink reviewed symbols
         working-directory: UniXNU
@@ -252,8 +254,10 @@ jobs:
         continue-on-error: true
         uses: actions/cache/save@v4
         with:
-          path: UniXNU/out/cupid/ios-27.0.1-24A446/cupid_ios27/tree/build
-          key: cupid-xnu-v1-${{ hashFiles('device/board.toml','device/configs/**','device/package/**','device/drivers/**','device/profiles/**','device/scripts/**','device/feeds.toml') }}-${{ steps.data-bind.outputs.uuid }}-${{ steps.unixnu-rev.outputs.rev }}-${{ github.sha }}
+          path: |
+            UniXNU/out/cupid/ios-27.0.1-24A446/cupid_ios27/tree/build
+            UniXNU/out/cupid/ios-27.0.1-24A446/cupid_ios27/tree/.cache/fakeroot
+          key: cupid-xnu-v2-${{ hashFiles('device/board.toml','device/configs/**','device/package/**','device/drivers/**','device/profiles/**','device/scripts/**','device/feeds.toml') }}-${{ steps.data-bind.outputs.uuid }}-${{ steps.unixnu-rev.outputs.rev }}-${{ github.sha }}
 
       - name: Upload the native symbols
         if: always()
