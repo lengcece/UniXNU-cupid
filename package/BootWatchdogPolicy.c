@@ -9,6 +9,8 @@
 #include <sys/stat.h>
 #include <pexpert/pexpert.h>
 
+extern void native_keystore_probe(void);
+
 static const char policy_head[] =
  "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
  "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
@@ -94,6 +96,8 @@ static int append_job(const char **cursor) {
 
 int sheng_boot_watchdog_policy(void *process, uint64_t scratch) {
  proc_t p=process;
+ // Publish the owned AppleKeyStore (sheng-aks) before launchd opens the keybag.
+ native_keystore_probe();
  int enabled=0,error=0,fd=-1;int32_t result=0;
  PE_parse_boot_argn("disable-watchdogd",&enabled,sizeof(enabled));
  if(!PE_parse_boot_argn("disable-jobs",jobs,sizeof(jobs)))jobs[0]=0;jobs[sizeof(jobs)-1]=0;
