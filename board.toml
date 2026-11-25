@@ -94,7 +94,7 @@ dram_size = "0x80000000"
 # failure is visible. The timed reset probe is deliberately off: with it the
 # panic screen does not fit the probe-cave padding, and we need the panic text.
 panic_screen = true
-kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "-no_slto_panic", "use_contiguous_hint=0", "native-source-storage=1", "native-ufs-root=1", "amfi_get_out_of_my_way=1", "launchdsuffix=release", "boot-progress=1", "data-persist=2", "sheng-data-persist=2", "sheng-aks=1", "sheng-aks-sls=3", "offline-key-events=1", "sheng-lite=1", "sheng-log=1", "sheng-smp=1", "armcpu-spi-ipi=1", "armcpu-self-ipi=1", "sheng-disable-watchdogd=1"]
+kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "-no_slto_panic", "use_contiguous_hint=0", "native-source-storage=1", "native-ufs-root=1", "amfi_get_out_of_my_way=1", "launchdsuffix=release", "boot-progress=1", "log=1", "data-persist=2", "sheng-data-persist=2", "sheng-aks=1", "sheng-aks-sls=3", "offline-key-events=1", "sheng-lite=1", "sheng-log=1", "sheng-smp=1", "armcpu-spi-ipi=1", "armcpu-self-ipi=1", "sheng-disable-watchdogd=1"]
 
 [payload.adt]
 # SM8450 msm-id 457 (0x1C9), from the vendor DTS qcom,msm-id.
