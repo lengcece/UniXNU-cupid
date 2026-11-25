@@ -263,24 +263,33 @@ extern "C" const OSMetaClass *native_source_storage_parent(void)
 
 // The Data seed the loader placed in /chosen/memory-map. Its disk starts after UFS, whose store window
 // keeps the changed pages of the seed when the board enables persistence.
+// The bring-up progress page draws the last six of these on the screen, so a boot that
+// stops making progress still shows the last step it reached in a photo of the phone.
+extern "C" void boot_progress_stage(const char *) __attribute__((weak_import));
+static void stage(const char *text)
+{
+    printf("SourceStorage: %s\n", text);
+    if (&boot_progress_stage) boot_progress_stage(text);
+}
+
 static void start_data_disk(IOService *provider)
 {
-    printf("SourceStorage: data disk probe\n");
+    stage("data disk: probe");
     IORegistryEntry *map = IORegistryEntry::fromPath("/chosen/memory-map", gIODTPlane);
     const bool seed = map && (map->getProperty("PackedRAMDisk") || map->getProperty("RAMDisk"));
     OSSafeReleaseNULL(map);
-    printf("SourceStorage: data disk seed=%d\n", seed ? 1 : 0);
+    stage(seed ? "data disk: seed yes" : "data disk: no seed");
     if (!seed) return;
     IOService *disk = OSDynamicCast(IOService, OSMetaClass::allocClassWithName("NativeRamBlock"));
-    printf("SourceStorage: data disk alloc=%d\n", disk ? 1 : 0);
+    stage(disk ? "data disk: allocated" : "data disk: alloc failed");
     if (!disk) panic("SourceStorage: cannot allocate the Data disk");
-    printf("SourceStorage: data disk init begin\n");
     if (!disk->init()) panic("SourceStorage: Data disk init failed");
-    printf("SourceStorage: data disk attach begin\n");
+    stage("data disk: init done");
     if (!disk->attach(provider)) panic("SourceStorage: Data disk attach failed");
-    printf("SourceStorage: data disk start begin\n");
+    stage("data disk: attach done");
+    stage("data disk: start begin");
     if (!disk->start(provider)) panic("SourceStorage: Data disk start failed");
-    printf("SourceStorage: Data disk started\n");
+    stage("data disk: started");
 }
 
 extern "C" void native_source_storage_start(void)
@@ -325,17 +334,23 @@ extern "C" void native_source_storage_start(void)
     if (step)
         panic("SourceStorage: UFS %s failed (root step %u: %s)", step, native_ufs_root_step,
               native_ufs_root_failure ? native_ufs_root_failure : "no reason recorded");
-    printf("SourceStorage: UFS started through public IOStorageFamily interface\n");
-    // The UFS log area exists from here on; the writer only runs with log=1.
-    // Start it before the Data disk so the flusher is alive while that disk starts.
-    unsigned log = 0;
-    thread_t check;
-    if (PE_parse_boot_argn("log", &log, sizeof(log)) && log == 1) {
-        boot_log_tick(0);
-        if (kernel_thread_start(boot_log_check, nullptr, &check) == KERN_SUCCESS)
-            thread_deallocate(check);
+    stage("ufs started");
+    // The UFS log area exists from here on. Start the writer unconditionally and put its
+    // state on the screen too: a refused log is the one failure a photo can still show.
+    boot_log_tick(0);
+    if (boot_log_state != 2) {
+        char text[96];
+        snprintf(text, sizeof text, "log refused (state %u): %s", boot_log_state,
+                 boot_log_open_refusal ? boot_log_open_refusal : "no reason");
+        if (&boot_progress_stage) boot_progress_stage(text);
+        printf("SourceStorage: %s\n", text);
+    } else {
+        stage("log writer open");
     }
+    thread_t check;
+    if (kernel_thread_start(boot_log_check, nullptr, &check) == KERN_SUCCESS)
+        thread_deallocate(check);
     start_data_disk(provider);
-    printf("SourceStorage: storage bring-up done\n");
+    stage("bring-up done");
     ufsBench();
 }
