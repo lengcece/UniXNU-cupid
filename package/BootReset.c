@@ -7,6 +7,7 @@
 #include <IOKit/IOLib.h>
 #include <kern/sched.h>
 #include <pexpert/pexpert.h>
+#include <kern/startup.h>
 #include "BootResetCore.h"
 
 // Physical windows from the sheng devicetree (spmi@c400000 reg, reg-names core/chnls/obsrvr/cnfg).
@@ -118,6 +119,17 @@ static void wdt_thread(void *arg, wait_result_t wr) {
     IOSleep(10000);
   }
 }
+// A diagnostic boot carries no autoreset, but the bootloader has already armed the hypervisor's watchdog: with nobody pinging it the
+// hypervisor resets the tablet a minute into boot, leaving the console frozen mid-log and no panic text. Pin it for two minutes past
+// the start so a late hang or panic stays visible; the cell is left alone, so the panic-screen probe space is untouched.
+#define kBootResetWdtPingSeconds 1200u
+int boot_reset_watchdog(uint32_t, char *, unsigned);
+static void boot_reset_wdt_ping_arm(void) {
+  char text[120];
+  boot_reset_watchdog(kBootResetWdtPingSeconds, text, sizeof text);
+}
+STARTUP(EARLY_BOOT, STARTUP_RANK_FIRST, boot_reset_wdt_ping_arm);
+
 int boot_reset_watchdog(uint32_t deadline, char *text, unsigned cap) {
   uint64_t since = 0;
   const int64_t status = (int64_t)smc2(GunyahWdtStatus, 0, 0, &since);
