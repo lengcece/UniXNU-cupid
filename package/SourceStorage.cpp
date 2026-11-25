@@ -326,14 +326,16 @@ extern "C" void native_source_storage_start(void)
         panic("SourceStorage: UFS %s failed (root step %u: %s)", step, native_ufs_root_step,
               native_ufs_root_failure ? native_ufs_root_failure : "no reason recorded");
     printf("SourceStorage: UFS started through public IOStorageFamily interface\n");
-    start_data_disk(provider);
     // The UFS log area exists from here on; the writer only runs with log=1.
-    boot_log_tick(0);
+    // Start it before the Data disk so the flusher is alive while that disk starts.
     unsigned log = 0;
     thread_t check;
-    if (PE_parse_boot_argn("log", &log, sizeof(log)) && log == 1 &&
-        kernel_thread_start(boot_log_check, nullptr, &check) == KERN_SUCCESS)
-        thread_deallocate(check);
+    if (PE_parse_boot_argn("log", &log, sizeof(log)) && log == 1) {
+        boot_log_tick(0);
+        if (kernel_thread_start(boot_log_check, nullptr, &check) == KERN_SUCCESS)
+            thread_deallocate(check);
+    }
+    start_data_disk(provider);
     printf("SourceStorage: storage bring-up done\n");
     ufsBench();
 }
