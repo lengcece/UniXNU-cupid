@@ -265,14 +265,21 @@ extern "C" const OSMetaClass *native_source_storage_parent(void)
 // keeps the changed pages of the seed when the board enables persistence.
 static void start_data_disk(IOService *provider)
 {
+    printf("SourceStorage: data disk probe\n");
     IORegistryEntry *map = IORegistryEntry::fromPath("/chosen/memory-map", gIODTPlane);
     const bool seed = map && (map->getProperty("PackedRAMDisk") || map->getProperty("RAMDisk"));
     OSSafeReleaseNULL(map);
+    printf("SourceStorage: data disk seed=%d\n", seed ? 1 : 0);
     if (!seed) return;
     IOService *disk = OSDynamicCast(IOService, OSMetaClass::allocClassWithName("NativeRamBlock"));
+    printf("SourceStorage: data disk alloc=%d\n", disk ? 1 : 0);
     if (!disk) panic("SourceStorage: cannot allocate the Data disk");
-    const char *step = !disk->init() ? "init" : !disk->attach(provider) ? "attach" : !disk->start(provider) ? "start" : nullptr;
-    if (step) panic("SourceStorage: Data disk %s failed", step);
+    printf("SourceStorage: data disk init begin\n");
+    if (!disk->init()) panic("SourceStorage: Data disk init failed");
+    printf("SourceStorage: data disk attach begin\n");
+    if (!disk->attach(provider)) panic("SourceStorage: Data disk attach failed");
+    printf("SourceStorage: data disk start begin\n");
+    if (!disk->start(provider)) panic("SourceStorage: Data disk start failed");
     printf("SourceStorage: Data disk started\n");
 }
 
@@ -327,5 +334,6 @@ extern "C" void native_source_storage_start(void)
     if (PE_parse_boot_argn("log", &log, sizeof(log)) && log == 1 &&
         kernel_thread_start(boot_log_check, nullptr, &check) == KERN_SUCCESS)
         thread_deallocate(check);
+    printf("SourceStorage: storage bring-up done\n");
     ufsBench();
 }
