@@ -116,6 +116,10 @@ jobs:
 
       - name: Install host tools
         run: |
+          # The Intel image ships an older Homebrew that cannot parse the ipsw cask; refresh it first.
+          if [ "$(brew --prefix)" = /usr/local ]; then
+            brew update
+          fi
           brew install llvm lld mtools dtc blacktop/tap/ipsw
           if ! command -v unifdef >/dev/null; then
             brew install unifdef
