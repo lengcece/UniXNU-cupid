@@ -56,16 +56,16 @@ static void boot_log_check(void *, wait_result_t)
         if (boot_log_state == 3) break;
         IOSleep(1000);
     }
-    if (!boot_log_rounds)
-        panic("SourceStorage: log has no log (state %u, rounds %u, errors %u, open: %s)", boot_log_state,
-              boot_log_rounds, boot_log_errors, boot_log_open_refusal ? boot_log_open_refusal : "no refusal");
-    uint32_t last = boot_log_rounds;
-    for (unsigned still = 0; boot_log_state == 2; IOSleep(1000)) {
-        const uint32_t now = boot_log_rounds;
-        still = now == last ? still + 1 : 0;
-        last = now;
-        if (still >= 20)
-            panic("SourceStorage: log writer stalled for 20 s after %u rounds (errors %u)", now, boot_log_errors);
+    if (!boot_log_rounds) {
+        printf("SourceStorage: log unavailable (state %u, rounds %u, errors %u, open: %s)\n", boot_log_state,
+               boot_log_rounds, boot_log_errors, boot_log_open_refusal ? boot_log_open_refusal : "no refusal");
+        return;
+    }
+    // Keep the console on the medium from here on: this thread is the writer, so the
+    // text of whatever comes next is captured even if the boot later stops making progress.
+    for (;;) {
+        boot_log_tick(1);
+        IOSleep(1000);
     }
 }
 
