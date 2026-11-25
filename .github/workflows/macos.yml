@@ -40,7 +40,8 @@ defaults:
 
 jobs:
   kernel:
-    runs-on: macos-26
+    # The arm64 image is cancelled for capacity most of the day; the Intel image has the same Xcode 26.6.
+    runs-on: macos-26-intel
     timeout-minutes: 360
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
@@ -276,7 +277,7 @@ jobs:
         if: always()
         working-directory: UniXNU
         run: |
-          export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
+          export PATH="/usr/local/opt/llvm/bin:/opt/homebrew/opt/llvm/bin:$PATH"
           K=$(find out/cupid -path '*/kernel/kernel.macho' | head -1)
           [ -n "$K" ] || { echo "no kernel.macho"; exit 0; }
           {

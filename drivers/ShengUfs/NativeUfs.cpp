@@ -1756,7 +1756,7 @@ static unsigned logMode (void)
 {
   static int cached = -1;
   if (cached < 0) {
-    uint32_t value = 1;   // cupc bring-up: the log is on unless the board turns it off
+    uint32_t value = 1;   // cupid bring-up: the log is on unless the board turns it off
     if (PE_parse_boot_argn ("log", &value, sizeof (value)) && value > 1) value = 0;
     cached = static_cast<int> (value);
   }

@@ -86,6 +86,7 @@ void boot_log_tick(unsigned now)
 
     struct cupid_msgbuf *m = msgbufp;
     if (!m || m->magic != MSG_MAGIC_VALUE || !m->bufc || m->size <= 0) {
+        boot_log_open_refusal = "msgbufp missing or bad magic (no console buffer)";
         boot_log_errors++;
         return;
     }
@@ -110,6 +111,7 @@ void boot_log_tick(unsigned now)
         log_last_bufx = bufx;
         log_last_written = (int) used;
     } else {
+        boot_log_open_refusal = "UFS log write failed";
         boot_log_errors = boot_log_errors + 1;
     }
     if (log_lock) IOLockUnlock(log_lock);

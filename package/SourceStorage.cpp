@@ -59,12 +59,23 @@ static void boot_log_check(void *, wait_result_t)
     if (!boot_log_rounds) {
         printf("SourceStorage: log unavailable (state %u, rounds %u, errors %u, open: %s)\n", boot_log_state,
                boot_log_rounds, boot_log_errors, boot_log_open_refusal ? boot_log_open_refusal : "no refusal");
+        char text[96];
+        snprintf(text, sizeof text, "log no write: state %u errors %u", boot_log_state, boot_log_errors);
+        if (&boot_progress_stage) boot_progress_stage(text);
         return;
     }
     // Keep the console on the medium from here on: this thread is the writer, so the
     // text of whatever comes next is captured even if the boot later stops making progress.
+    int reported = 0;
     for (;;) {
         boot_log_tick(1);
+        // One screen line for the first successful flush: a photo then tells "writing" from "no write" above.
+        if (!reported && boot_log_rounds) {
+            char text[96];
+            snprintf(text, sizeof text, "log writing: rounds %u errors %u", boot_log_rounds, boot_log_errors);
+            if (&boot_progress_stage) boot_progress_stage(text);
+            reported = 1;
+        }
         IOSleep(1000);
     }
 }
