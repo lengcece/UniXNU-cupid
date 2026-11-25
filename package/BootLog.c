@@ -115,3 +115,4 @@ void boot_log_tick(unsigned now)
     if (log_lock) IOLockUnlock(log_lock);
 }
 // rebuild 2026-11-25: retrigger after the runner capacity failure
+// rebuild 2: the hosted macOS runner was out of capacity again
