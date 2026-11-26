@@ -122,3 +122,5 @@ void boot_log_tick(unsigned now)
 // retry 9 20261126-2019: hosted arm64 runner capacity
 // retry 19 20261126-2049: hosted arm64 runner capacity
 // retry 24 20261126-2105: hosted arm64 runner capacity
+// retry 29 20261126-2122: hosted arm64 runner capacity
+// retry 30 20261126-2125: hosted arm64 runner capacity
