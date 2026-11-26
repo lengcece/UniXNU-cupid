@@ -42,13 +42,12 @@ defaults:
 jobs:
   kernel:
     # Both images carry Xcode 26.6. The arm64 image is often cancelled for capacity; the Intel one is not.
-    if: github.event_name != 'schedule' || matrix.image == 'macos-26'
+    # A scheduled run only starts the arm64 leg.
     runs-on: ${{ matrix.image }}
     timeout-minutes: 360
     strategy:
       fail-fast: false
-      matrix:
-        image: [macos-26, macos-26-intel]
+      matrix: ${{ fromJSON(github.event_name == 'schedule' && '{"image":["macos-26"]}' || '{"image":["macos-26","macos-26-intel"]}') }}
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
       UNIXNU_DEVICE: ${{ github.workspace }}/device
