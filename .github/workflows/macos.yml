@@ -125,6 +125,10 @@ jobs:
             tar -xzf "$RUNNER_TEMP/ipsw"/ipsw_*.tar.gz -C "$RUNNER_TEMP/ipsw-x"
             sudo find "$RUNNER_TEMP/ipsw-x" -type f -name ipsw -exec install -m 0755 {} /usr/local/bin/ipsw ';'
             ipsw version
+            # UniXNU's build scripts name the llvm tools by the arm64 prefix (llvm-objcopy).
+            sudo mkdir -p /opt/homebrew/opt
+            sudo ln -s "$(brew --prefix llvm@20)" /opt/homebrew/opt/llvm
+            /opt/homebrew/opt/llvm/bin/llvm-objcopy --version
           else
             brew install llvm lld mtools dtc blacktop/tap/ipsw
           fi
