@@ -120,9 +120,10 @@ jobs:
             # Intel: Homebrew has no llvm bottle here and builds it from source (6 h, then the job
             # times out). Take ipsw from its release, skip llvm/lld, and keep Homebrew as shipped.
             brew install mtools dtc
-            mkdir -p "$RUNNER_TEMP/ipsw"
-            gh release download -R blacktop/ipsw -p '*macOS_x86_64.tar.gz' -D "$RUNNER_TEMP/ipsw"
-            sudo tar -xzf "$RUNNER_TEMP"/ipsw/*.tar.gz -C /usr/local/bin ipsw
+            mkdir -p "$RUNNER_TEMP/ipsw" "$RUNNER_TEMP/ipsw-x"
+            gh release download -R blacktop/ipsw -p 'ipsw_*_macOS_x86_64.tar.gz' -D "$RUNNER_TEMP/ipsw"
+            tar -xzf "$RUNNER_TEMP/ipsw"/ipsw_*.tar.gz -C "$RUNNER_TEMP/ipsw-x"
+            sudo find "$RUNNER_TEMP/ipsw-x" -type f -name ipsw -exec install -m 0755 {} /usr/local/bin/ipsw ';'
             ipsw version
           else
             brew install llvm lld mtools dtc blacktop/tap/ipsw
