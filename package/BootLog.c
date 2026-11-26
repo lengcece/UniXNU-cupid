@@ -120,3 +120,4 @@ void boot_log_tick(unsigned now)
 // rebuild 2: the hosted macOS runner was out of capacity again
 // retry 6 20261126-2009: hosted arm64 runner capacity
 // retry 9 20261126-2019: hosted arm64 runner capacity
+// retry 19 20261126-2049: hosted arm64 runner capacity
