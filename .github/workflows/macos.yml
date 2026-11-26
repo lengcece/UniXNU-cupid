@@ -42,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [macos-26]
+        image: [macos-26, macos-26-intel]
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
       UNIXNU_DEVICE: ${{ github.workspace }}/device
@@ -116,11 +116,17 @@ jobs:
 
       - name: Install host tools
         run: |
-          # The Intel image ships an older Homebrew that cannot parse the ipsw cask; refresh it first.
           if [ "$(brew --prefix)" = /usr/local ]; then
-            brew update
+            # Intel: Homebrew has no llvm bottle here and builds it from source (6 h, then the job
+            # times out). Take ipsw from its release, skip llvm/lld, and keep Homebrew as shipped.
+            brew install mtools dtc
+            mkdir -p "$RUNNER_TEMP/ipsw"
+            gh release download -R blacktop/ipsw -p '*macOS_x86_64.tar.gz' -D "$RUNNER_TEMP/ipsw"
+            sudo tar -xzf "$RUNNER_TEMP"/ipsw/*.tar.gz -C /usr/local/bin ipsw
+            ipsw version
+          else
+            brew install llvm lld mtools dtc blacktop/tap/ipsw
           fi
-          brew install llvm lld mtools dtc blacktop/tap/ipsw
           if ! command -v unifdef >/dev/null; then
             brew install unifdef
             echo "$(brew --prefix unifdef)/bin" >> "$GITHUB_PATH"
