@@ -7,6 +7,10 @@ name: macOS kernel build
 
 on:
   workflow_dispatch:
+  # The arm64 image is often cancelled for capacity (not acquired in 15 min). A scheduled run keeps
+  # retrying without anyone pushing; the guard step below cancels it when it is not needed.
+  schedule:
+    - cron: "*/20 * * * *"
   push:
     branches: [main]
     paths:
@@ -24,6 +28,7 @@ on:
 
 permissions:
   contents: read
+  actions: write   # only used to cancel a scheduled run that is not needed
 
 env:
   HOMEBREW_NO_AUTO_UPDATE: 1
@@ -37,6 +42,7 @@ defaults:
 jobs:
   kernel:
     # Both images carry Xcode 26.6. The arm64 image is often cancelled for capacity; the Intel one is not.
+    if: github.event_name != 'schedule' || matrix.image == 'macos-26'
     runs-on: ${{ matrix.image }}
     timeout-minutes: 360
     strategy:
@@ -51,6 +57,26 @@ jobs:
       # prepare-xnu-source.py lists Apple sources through the GitHub API.
       GITHUB_TOKEN: ${{ github.token }}
     steps:
+      - name: Scheduled run guard
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Cancel this run when a boot image already exists or an arm64 kernel job is really building.
+          for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/macos.yml/runs?per_page=12" --jq '.workflow_runs[].id'); do
+            [ "$id" = "$GITHUB_RUN_ID" ] && continue
+            if gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/artifacts" --jq '.artifacts[].name' | grep -q '^cupid-bootimg'; then
+              echo "a boot image already exists (run $id): stopping this scheduled run"
+              gh run cancel "$GITHUB_RUN_ID"; sleep 30; exit 1
+            fi
+            live=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs" --jq '[.jobs[] | select((.labels | index("macos-26")) and .status == "in_progress" and .started_at)] | length')
+            if [ "$live" != "0" ]; then
+              echo "an arm64 kernel job is already building (run $id): stopping this scheduled run"
+              gh run cancel "$GITHUB_RUN_ID"; sleep 30; exit 1
+            fi
+          done
+          echo "no boot image yet and no arm64 build running: this run goes on"
+
       - name: Check out the device repository
         uses: actions/checkout@v4
         with:
