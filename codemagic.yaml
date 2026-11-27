@@ -126,8 +126,19 @@ workflows:
           . "$HOME/env.sh"
           # Homebrew LLVM stays keg-only: clang must remain Xcode's. UniXNU finds
           # lld-link, llvm-lib and llvm-rc through /opt/homebrew/opt/llvm/bin itself.
-          brew install llvm lld mtools dtc blacktop/tap/ipsw
-          echo 'export PATH="$(brew --prefix ipsw)/bin:$PATH"' >> "$HOME/env.sh"
+          brew install llvm lld mtools dtc
+          # blacktop/tap does not load on the Homebrew Codemagic ships ("Cask 'ipsw'
+          # definition is invalid: invalid 'zap' stanza"), so take the release binary.
+          tag=$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+            https://github.com/blacktop/ipsw/releases/latest | sed 's#.*/tag/##')
+          ver=${tag#v}
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL -o /tmp/ipsw.tgz \
+            "https://github.com/blacktop/ipsw/releases/download/$tag/ipsw_${ver}_macOS_arm64.tar.gz"
+          tar -xzf /tmp/ipsw.tgz -C "$HOME/.local/bin" ipsw LICENSE
+          chmod +x "$HOME/.local/bin/ipsw"
+          "$HOME/.local/bin/ipsw" version
+          echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/env.sh"
           . "$HOME/env.sh"
           sw_vers
           xcodebuild -version
