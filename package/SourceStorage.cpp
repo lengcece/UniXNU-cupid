@@ -40,6 +40,9 @@ extern "C" const char *volatile native_ufs_root_failure;
 // minimal kernel does not include it; a weak definition keeps the archive
 // linkable and is replaced when the diagnostic component is built in.
 extern "C" __attribute__((weak)) void boot_progress_poll(void) {}
+// Puts one line on the board progress page. It lives in the kernel (osfmk/kern/boot_progress.c) and is absent
+// from a kernel built without it, so every caller checks the address; declared here, before the first use.
+extern "C" void boot_progress_stage(const char *) __attribute__((weak_import));
 // Starts the log writer (BootLog.c); the board page calls it when that page is built in.
 extern "C" void boot_log_tick(unsigned now);
 extern "C" volatile uint32_t boot_log_state, boot_log_rounds, boot_log_errors;
@@ -276,7 +279,6 @@ extern "C" const OSMetaClass *native_source_storage_parent(void)
 // keeps the changed pages of the seed when the board enables persistence.
 // The bring-up progress page draws the last six of these on the screen, so a boot that
 // stops making progress still shows the last step it reached in a photo of the phone.
-extern "C" void boot_progress_stage(const char *) __attribute__((weak_import));
 static void stage(const char *text)
 {
     printf("SourceStorage: %s\n", text);
