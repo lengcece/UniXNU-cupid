@@ -154,6 +154,15 @@ jobs:
             sudo mkdir -p /opt/homebrew/opt
             sudo ln -s "$(brew --prefix llvm@20)" /opt/homebrew/opt/llvm
             /opt/homebrew/opt/llvm/bin/llvm-objcopy --version
+            # The package step links EDK II's BaseTools with lld-link, llvm-lib and llvm-rc, and the payload step
+            # uses ld.lld. UniXNU looks for them in /usr/local/opt/llvm and /usr/local/opt/lld on this prefix,
+            # and on PATH; they all ship with llvm@20. clang stays Xcode's: its directory is not put on PATH.
+            sudo ln -sfn "$(brew --prefix llvm@20)" /usr/local/opt/llvm
+            sudo ln -sfn "$(brew --prefix llvm@20)" /usr/local/opt/lld
+            for tool in lld-link ld.lld llvm-lib llvm-rc; do
+              sudo ln -sfn "$(brew --prefix llvm@20)/bin/$tool" "/usr/local/bin/$tool"
+            done
+            lld-link --version
           else
             brew install llvm lld mtools dtc blacktop/tap/ipsw
           fi
